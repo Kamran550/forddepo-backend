@@ -14,10 +14,6 @@ class AddNewColumnsShopTable extends Migration
      */
     public function up()
     {
-
-        Schema::table('shops', function (Blueprint $table) {
-            $table->enum('type', Shop::TYPE)->nullable();
-        });
     }
 
     /**
