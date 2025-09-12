@@ -11,8 +11,9 @@ class CurrencyController extends RestBaseController
 {
     public function index(): JsonResponse
     {
+        \Log::info('currency');
         $currencies = Currency::currenciesList();
-
+        \Log::info('curr:', ['curr:', $currencies]);
         return $this->successResponse(
             __('errors.' . ResponseError::NO_ERROR, locale: $this->language),
             CurrencyResource::collection($currencies)

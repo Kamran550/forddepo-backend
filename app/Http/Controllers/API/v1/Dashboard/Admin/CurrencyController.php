@@ -32,7 +32,9 @@ class CurrencyController extends AdminBaseController
      */
     public function index(): JsonResponse
     {
+        \Log::info('currencie admin');
         $currencies = Currency::currenciesList();
+        \Log::info('currencie admin', ['cur:', $currencies]);
 
         return $this->successResponse(
             __('errors.' . ResponseError::SUCCESS, locale: $this->language),

@@ -25,13 +25,14 @@ class SimpleStockResource extends JsonResource
             'price'                     => $this->rate_price,
             'quantity'                  => $this->quantity,
             'sku'                       => $this->when($this->sku, $this->sku),
+            'warehouse'                 => $this->whenLoaded('warehouse', $this->warehouse?->name),
+
             'discount'                  => $this->when($this->rate_actual_discount, $this->rate_actual_discount),
             'tax'                       => $this->tax_price,
             'total_price'               => $this->rate_total_price,
-            'addon'                     => (boolean)$this->addon,
+            'addon'                     => (bool)$this->addon,
             'addons'                    => StockAddonResource::collection($this->whenLoaded('addons')),
             'deleted_at'                => $this->when($this->deleted_at, $this->deleted_at?->format('Y-m-d H:i:s') . 'Z'),
-
             // Relation
             'extras'                    => ExtraValueResource::collection($this->whenLoaded('stockExtras')),
             'bonus'                     => SimpleBonusResource::make($this->whenLoaded('bonus')),

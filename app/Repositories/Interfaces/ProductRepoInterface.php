@@ -8,6 +8,7 @@ interface ProductRepoInterface
 {
     public function productsPaginate(array $filter);
 
+
     public function selectPaginate(array $filter);
 
     public function productDetails(int $id);
@@ -17,6 +18,8 @@ interface ProductRepoInterface
     public function productsByIDs(array $filter = []);
 
     public function productsSearch(array $filter = []);
+
+    public function productsSearchWeb(array $filter = []);
 
     public function selectStockPaginate(array $data);
 

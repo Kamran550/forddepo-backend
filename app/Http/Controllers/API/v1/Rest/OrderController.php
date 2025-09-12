@@ -60,6 +60,7 @@ class OrderController extends RestBaseController
 	public function store(RestStoreRequest $request): JsonResponse
 	{
 		$validated = $request->validated();
+		LOg::info('partial validated:', ['val:', $validated]);
 		$result = $this->orderService->create($validated);
 
 		if (!data_get($result, 'status')) {

@@ -397,6 +397,56 @@ class Order extends Model
 
 		return $this->service_fee;
 	}
+	public function orderPayments()
+	{
+		return $this->hasMany(OrderPayment::class);
+	}
+
+	public function addPayment(float $amount, ?int $transactionId = null, string $paymentMethod = 'cash', ?string $note = null): OrderPayment
+	{
+		// Validate amount
+		if ($amount <= 0) {
+			throw new \InvalidArgumentException('Payment amount must be greater than 0');
+		}
+		\Log::info("Order total_price:", ['total_price' => $this->total_price]);
+
+		\Log::info("Order modeldeki amount:", ['amount:', $amount]);
+		\Log::info("Order modeldeki remaining_amount:", ['remaining_amount:', $this->remaining_amount]);
+		if ($amount > $this->remaining_amount) {
+			throw new \InvalidArgumentException('Payment amount cannot exceed remaining balance');
+		}
+
+		// Create payment record
+		$payment = $this->orderPayments()->create([
+			'amount' => $amount,
+			'transaction_id' => $transactionId,
+			'payment_method' => $paymentMethod,
+			'note' => $note,
+			'status' => 'completed'
+		]);
+
+		// Update order paid amount
+		$this->update([
+			'paid_amount' => $this->orderPayments()->sum('amount'),
+			'is_partial_payment' => true,
+		]);
+
+		return $payment;
+	}
+
+
+
+	public function getPaidAmountAttribute()
+	{
+		return $this->orderPayments()->sum('amount');
+	}
+
+	// Qalan borc
+	public function getRemainingAmountAttribute()
+	{
+		return $this->total_price - $this->paid_amount;
+	}
+
 
 	public function currency(): BelongsTo
 	{

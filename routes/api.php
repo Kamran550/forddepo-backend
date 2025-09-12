@@ -936,6 +936,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['block.ip']], function () {
             Route::get('stocks/truncate/db',             [Admin\ProductController::class, 'truncateStocks']);
             Route::get('stocks/select-paginate',         [Admin\ProductController::class, 'selectStockPaginate']);
 
+            //* Warehouse */
+            Route::apiResource('warehouse',     Admin\WarehouseController::class);
+            // Route::get('warehouse/find',       Admin\WarehouseController::class, 'findAll');
             /* Orders */
             Route::get('order/export',                   [Admin\OrderController::class, 'fileExport']);
             Route::post('order/import',                  [Admin\OrderController::class, 'fileImport']);
@@ -955,6 +958,10 @@ Route::group(['prefix' => 'v1', 'middleware' => ['block.ip']], function () {
             Route::get('user-orders/{id}',               [Admin\OrderController::class, 'userOrder']);
             Route::get('user-orders/{id}/paginate',      [Admin\OrderController::class, 'userOrders']);
             Route::get('orders/pending/transaction',     [Admin\OrderController::class, 'ordersPendingTransaction']);
+
+            Route::post('/orders/partial-payment', [Admin\OrderController::class, 'addPartialPayment'])
+                ->name('orders.add-partial-payment');
+
 
             /* Parcel Orders */
             Route::get('parcel-order/export',            [Admin\ParcelOrderController::class, 'fileExport']);

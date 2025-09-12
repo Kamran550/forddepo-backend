@@ -56,6 +56,7 @@ class ProductController extends AdminBaseController
 
     public function paginate(Request $request): AnonymousResourceCollection
     {
+        Log::info('paggggg');
         $products = $this->productRepository->productsPaginate($request->all());
 
         if (!Cache::get('tvoirifgjn.seirvjrc') || data_get(Cache::get('tvoirifgjn.seirvjrc'), 'active') != 1) {
@@ -79,6 +80,7 @@ class ProductController extends AdminBaseController
      */
     public function store(AdminRequest $request): JsonResponse
     {
+        Log::info('req: all product store', ['req:', $request->validated()]);
         $result = $this->productService->create($request->validated());
 
         if (!data_get($result, 'status')) {
@@ -103,6 +105,7 @@ class ProductController extends AdminBaseController
      */
     public function show(string $uuid): JsonResponse
     {
+        Log::info('showwww');
         $product = $this->productRepository->productByUUID($uuid);
 
         if (empty($product)) {
@@ -131,6 +134,7 @@ class ProductController extends AdminBaseController
      */
     public function update(AdminRequest $request, string $uuid): JsonResponse
     {
+        Log::info('product update:', ['prod update req:', $request->all()]);
         $result = $this->productService->update($uuid, $request->validated());
 
         if (!data_get($result, 'status')) {
@@ -160,7 +164,6 @@ class ProductController extends AdminBaseController
         );
 
         return StockResource::collection($stocks);
-
     }
 
     /**
@@ -305,6 +308,7 @@ class ProductController extends AdminBaseController
      */
     public function addInStock(string $uuid, addInStockRequest $request): JsonResponse
     {
+        Log::info('req all prod stock:', ['stock:', $request->all()]);
         $product = Product::firstWhere('uuid', $uuid);
         $locale  = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
 
@@ -316,10 +320,10 @@ class ProductController extends AdminBaseController
         }
 
         try {
-			$validated = $request->validated();
-			$validated['shop_id'] = $product->shop_id;
-
-			$product->addInStock($validated);
+            $validated = $request->validated();
+            $validated['shop_id'] = $product->shop_id;
+            Log::info('traitden evvelki validated:', ['valid:', $validated]);
+            $product->addInStock($validated);
         } catch (Throwable $e) {
             return $this->onErrorResponse([
                 'status'  => false,
@@ -330,13 +334,13 @@ class ProductController extends AdminBaseController
 
         $product = $product->fresh([
             'translation' => fn($q) => $q
-               ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+                ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
 
             'stocks.stockExtras.group.translation' => fn($q) => $q
-               ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+                ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
 
             'stocks.addons.addon.translation' => fn($q) => $q
-               ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+                ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
         ]);
 
         return $this->successResponse(
@@ -422,17 +426,16 @@ class ProductController extends AdminBaseController
         $product->update(['active' => !$product->active]);
 
 
-		if ($product->active) {
+        if ($product->active) {
 
-			$product->category?->update([
-				'active' => true,
-			]);
+            $product->category?->update([
+                'active' => true,
+            ]);
 
-			$product->brand?->update([
-				'active' => true,
-			]);
-
-		}
+            $product->brand?->update([
+                'active' => true,
+            ]);
+        }
 
         return $this->successResponse(
             __('errors.' . ResponseError::RECORD_WAS_SUCCESSFULLY_UPDATED, locale: $this->language),
@@ -465,21 +468,20 @@ class ProductController extends AdminBaseController
 
         $product->update([
             'status' => $request->input('status'),
-			'status_note' => $request->input('status_note')
+            'status_note' => $request->input('status_note')
         ]);
 
-		if ($product->status === Product::PUBLISHED) {
+        if ($product->status === Product::PUBLISHED) {
 
-			$product->category?->update([
-				'status' => Category::PUBLISHED,
-				'active' => true
-			]);
+            $product->category?->update([
+                'status' => Category::PUBLISHED,
+                'active' => true
+            ]);
 
-			$product->brand?->update([
-				'active' => true,
-			]);
-
-		}
+            $product->brand?->update([
+                'active' => true,
+            ]);
+        }
 
         return $this->successResponse(
             __('errors.' . ResponseError::RECORD_WAS_SUCCESSFULLY_UPDATED, locale: $this->language),
@@ -507,22 +509,22 @@ class ProductController extends AdminBaseController
         return $this->errorResponse('Error during export');
     }
 
-	public function multipleKitchenUpdate(MultipleKitchenUpdateRequest $request): JsonResponse
-	{
-		try {
-			$validated = $request->validated();
+    public function multipleKitchenUpdate(MultipleKitchenUpdateRequest $request): JsonResponse
+    {
+        try {
+            $validated = $request->validated();
 
-			$this->productService->multipleKitchenUpdate($validated);
+            $this->productService->multipleKitchenUpdate($validated);
 
-			return $this->successResponse(__('errors.' . ResponseError::NO_ERROR, locale: $this->language));
-		} catch (Throwable $e) {
-			$this->error($e);
-			return $this->onErrorResponse([
-				'code'    => ResponseError::ERROR_404,
-				'message' => __('errors.' . ResponseError::ERROR_404, locale: $this->language)
-			]);
-		}
-	}
+            return $this->successResponse(__('errors.' . ResponseError::NO_ERROR, locale: $this->language));
+        } catch (Throwable $e) {
+            $this->error($e);
+            return $this->onErrorResponse([
+                'code'    => ResponseError::ERROR_404,
+                'message' => __('errors.' . ResponseError::ERROR_404, locale: $this->language)
+            ]);
+        }
+    }
 
     public function history(FilterParamsRequest $request): AnonymousResourceCollection
     {
@@ -543,15 +545,15 @@ class ProductController extends AdminBaseController
             }
 
             $filename = $request->file('file');
-//            $filename = Storage::put("public/$content", $filename);
-//
-//            $filename = str_replace('public', 'storage', $filename);
+            //            $filename = Storage::put("public/$content", $filename);
+            //
+            //            $filename = str_replace('public', 'storage', $filename);
 
             $import = new ProductImport($shopId, $this->language);
 
-//            $import->chain([
-//                new ImportReadyNotify($shopId, $filename)
-//            ]);
+            //            $import->chain([
+            //                new ImportReadyNotify($shopId, $filename)
+            //            ]);
 
             Excel::import($import, $filename);
 
@@ -608,5 +610,4 @@ class ProductController extends AdminBaseController
     {
         return $this->productRepository->mostPopulars($request->all());
     }
-
 }

@@ -143,10 +143,10 @@ class Stock extends Model
         return $this->morphMany(ModelLog::class, 'model');
     }
 
-	public function inventoryItems(): HasMany
-	{
-		return $this->hasMany(StockInventoryItem::class);
-	}
+    public function inventoryItems(): HasMany
+    {
+        return $this->hasMany(StockInventoryItem::class);
+    }
 
     public function stockExtrasTrashed(): BelongsToMany
     {
@@ -158,9 +158,9 @@ class Stock extends Model
         /** @var Discount $discount */
         $discount = $this->countable?->discounts ?
             $this->countable?->discounts?->where('start', '<=', today())
-                ->where('end', '>=', today())
-                ->where('active', 1)
-                ->first() : optional();
+            ->where('end', '>=', today())
+            ->where('active', 1)
+            ->first() : optional();
 
         if (!$discount?->type) {
             return 0;
@@ -171,7 +171,6 @@ class Stock extends Model
         if ($discount->type == 'percent') {
 
             $price = ($price / 100 * $this->price);
-
         }
 
         return max($price, 0);
@@ -186,10 +185,10 @@ class Stock extends Model
         return $this->actual_discount;
     }
 
-	public function getTotalPriceAttribute()
-	{
-		return max($this->price - $this->actual_discount + $this->tax_price, 0);
-	}
+    public function getTotalPriceAttribute()
+    {
+        return max($this->price - $this->actual_discount + $this->tax_price, 0);
+    }
 
     public function getRateTotalPriceAttribute()
     {
@@ -226,5 +225,27 @@ class Stock extends Model
         }
 
         return $this->tax_price;
+    }
+
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    // Scope əlavə et
+    public function scopeInWarehouse($query, $warehouseId)
+    {
+        return $query->where('warehouse_id', $warehouseId);
+    }
+
+    public function scopeBakuWarehouse($query)
+    {
+        return $query->where('warehouse_id', 1); // Bakı anbarı
+    }
+
+    public function scopeGanjaWarehouse($query)
+    {
+        return $query->where('warehouse_id', 2); // Gəncə anbarı
     }
 }

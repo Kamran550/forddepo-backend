@@ -21,10 +21,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends AdminBaseController
 {
-    public function __construct(private UserService $userService,private UserRepository $userRepository)
+    public function __construct(private UserService $userService, private UserRepository $userRepository)
     {
         parent::__construct();
     }
@@ -37,11 +38,13 @@ class UserController extends AdminBaseController
      */
     public function paginate(Request $request): AnonymousResourceCollection
     {
+        Log::info('req:', ['req:', $request->all()]);
         $users = $this->userRepository->usersPaginate($request->all());
 
         if (!Cache::get('tvoirifgjn.seirvjrc') || data_get(Cache::get('tvoirifgjn.seirvjrc'), 'active') != 1) {
             abort(403);
         }
+        Log::info('returned users:', ['users:', UserResource::collection($users)]);
 
         return UserResource::collection($users);
     }
@@ -185,7 +188,10 @@ class UserController extends AdminBaseController
     public function updateRole($uuid, Request $request): JsonResponse
     {
         try {
+            Log::info('req up role:', ['rol:', $request->all()]);
             $user = $this->userRepository->userByUUID($uuid);
+
+            Log::info('user:', ['user:', $user]);
 
             if (empty($user)) {
                 return $this->onErrorResponse([
@@ -194,6 +200,7 @@ class UserController extends AdminBaseController
                 ]);
             }
 
+            Log::info('1111111111111111111111111111111111');
             /** @var User $user */
             if (
                 $user->shop && $user->shop->status == 'approved' ||
@@ -201,6 +208,8 @@ class UserController extends AdminBaseController
             ) {
                 return $this->onErrorResponse(['code' => ResponseError::ERROR_110]);
             }
+            Log::info('2222222222222222222222222222222222222', ['inp:', $request->input('role')]);
+
 
             $user->syncRoles([$request->input('role')]);
 
@@ -208,7 +217,6 @@ class UserController extends AdminBaseController
                 __('errors.' . ResponseError::RECORD_WAS_SUCCESSFULLY_UPDATED, locale: $this->language),
                 UserResource::make($user)
             );
-
         } catch (Exception $e) {
             $this->error($e);
             return $this->onErrorResponse(['code' => ResponseError::ERROR_400]);
@@ -319,7 +327,9 @@ class UserController extends AdminBaseController
         }
 
         /** @var User $user */
-        $result = (new UserWalletService)->update($user, [
+        $result = (new UserWalletService)->update(
+            $user,
+            [
                 'price' => $request->input('price'),
                 'note'  => $request->input('note')
             ]

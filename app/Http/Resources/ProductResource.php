@@ -29,45 +29,46 @@ class ProductResource extends JsonResource
         $isReviewPercent = $this->reviews_avg_rating || $reviewsLoaded;
         $isReviewPercent = $isReviewPercent ? $this->reviews_avg_rating ?? $this->reviews?->avg('rating') : null;
 
-		$inventoryItems = $this->relationLoaded('inventoryItems');
+        $inventoryItems = $this->relationLoaded('inventoryItems');
 
-		return [
-            'id'                    => $this->when($this->id, 			$this->id),
-            'slug'                  => $this->when($this->slug, 		$this->slug),
-            'uuid'                  => $this->when($this->uuid, 		$this->uuid),
-            'shop_id'               => $this->when($this->shop_id, 		$this->shop_id),
-            'category_id'           => $this->when($this->category_id, 	$this->category_id),
-            'keywords'              => $this->when($this->keywords, 	$this->keywords),
-            'brand_id'              => $this->when($this->brand_id, 	$this->brand_id),
-            'tax'                   => $this->when($this->tax, 			$this->tax),
-            'qr_code'               => $this->when($this->qr_code, 		$this->qr_code),
-            'status'                => $this->when($this->status, 		$this->status),
-            'status_note'           => $this->when($this->status_note, 	$this->status_note),
+        return [
+            'id'                    => $this->when($this->id,             $this->id),
+            'slug'                  => $this->when($this->slug,         $this->slug),
+            'uuid'                  => $this->when($this->uuid,         $this->uuid),
+            'shop_id'               => $this->when($this->shop_id,         $this->shop_id),
+            'category_id'           => $this->when($this->category_id,     $this->category_id),
+            'keywords'              => $this->when($this->keywords,     $this->keywords),
+            'brand_id'              => $this->when($this->brand_id,     $this->brand_id),
+            'tax'                   => $this->when($this->tax,             $this->tax),
+            'qr_code'               => $this->when($this->qr_code,         $this->qr_code),
+            'status'                => $this->when($this->status,         $this->status),
+            'status_note'           => $this->when($this->status_note,     $this->status_note),
             'active'                => (bool) $this->active,
             'addon'                 => (bool) $this->addon,
             'vegetarian'            => (bool) $this->vegetarian,
-            'img'                   => $this->when($this->img, 			$this->img),
-            'kcal'                  => $this->when($this->kcal, 		$this->kcal),
-            'carbs'                 => $this->when($this->carbs, 		$this->carbs),
-            'protein'               => $this->when($this->protein, 		$this->protein),
-            'fats'                  => $this->when($this->fats, 		$this->fats),
-            'min_qty'               => $this->when($this->min_qty, 		$this->min_qty),
-            'max_qty'               => $this->when($this->max_qty, 		$this->max_qty),
-            'interval'              => $this->when($this->interval, 	$this->interval),
-            'kitchen_id'            => $this->when($this->kitchen_id, 	$this->kitchen_id),
+            'oem_code'              => $this->when($this->oem_code,      $this->oem_code),
+            'img'                   => $this->when($this->img,             $this->img),
+            'kcal'                  => $this->when($this->kcal,         $this->kcal),
+            'carbs'                 => $this->when($this->carbs,         $this->carbs),
+            'protein'               => $this->when($this->protein,         $this->protein),
+            'fats'                  => $this->when($this->fats,         $this->fats),
+            'min_qty'               => $this->when($this->min_qty,         $this->min_qty),
+            'max_qty'               => $this->when($this->max_qty,         $this->max_qty),
+            'interval'              => $this->when($this->interval,     $this->interval),
+            'kitchen_id'            => $this->when($this->kitchen_id,     $this->kitchen_id),
             'created_at'            => $this->when($this->created_at,   $this->created_at?->format('Y-m-d H:i:s') . 'Z'),
             'updated_at'            => $this->when($this->updated_at,   $this->updated_at?->format('Y-m-d H:i:s') . 'Z'),
             'deleted_at'            => $this->when($this->deleted_at,   $this->deleted_at?->format('Y-m-d H:i:s') . 'Z'),
             'order_details_count'   => $this->when($this->order_details_count,  $this->order_details_count),
-			'cost_price'    		=> $inventoryItems ? Utility::calculateCostPrice($this) : 0,
-			'reviews_count'         => $this->when($isReviewCount,   $isReviewCount),
+            'cost_price'            => $inventoryItems ? Utility::calculateCostPrice($this) : 0,
+            'reviews_count'         => $this->when($isReviewCount,   $isReviewCount),
             'rating_percent'        => $this->when($isReviewPercent, $isReviewPercent),
 
             // Relations
             'discounts'             => SimpleDiscountResource::collection($this->whenLoaded('discounts')),
             'translation'           => TranslationResource::make($this->whenLoaded('translation')),
             'translations'          => TranslationResource::collection($this->whenLoaded('translations')),
-            'inventory_items' 		=> $this->whenLoaded('inventoryItems'),
+            'inventory_items'         => $this->whenLoaded('inventoryItems'),
             'locales'               => $this->when($locales, $locales),
             'kitchen'               => KitchenResource::make($this->whenLoaded('kitchen')),
             'properties'            => ProductPropertyResource::collection($this->whenLoaded('properties')),
@@ -87,5 +88,4 @@ class ProductResource extends JsonResource
             'logs'                  => ModelLogResource::collection($this->whenLoaded('logs')),
         ];
     }
-
 }

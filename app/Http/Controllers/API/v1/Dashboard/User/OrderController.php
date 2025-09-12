@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\API\v1\Dashboard\User;
 
 use App\Helpers\ResponseError;
+use App\Http\Requests\Admin\Order\AddPartialPaymentRequest;
 use App\Http\Requests\FilterParamsRequest;
 use App\Http\Requests\Order\AddRepeatRequest;
 use App\Http\Requests\Order\AddReviewRequest;
 use App\Http\Requests\Order\UserStoreRequest;
+use App\Http\Resources\OrderPaymentResource;
 use App\Http\Resources\OrderResource;
 use App\Models\Cart;
 use App\Models\Order;
@@ -19,6 +21,7 @@ use App\Services\OrderService\OrderRepeatService;
 use App\Services\OrderService\OrderReviewService;
 use App\Services\OrderService\OrderStatusUpdateService;
 use App\Traits\Notification;
+use DB;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -50,10 +53,11 @@ class OrderController extends UserBaseController
 	 */
 	public function paginate(FilterParamsRequest $request): AnonymousResourceCollection
 	{
+		\Log::info('user Paginate');
 		$filter = $request->merge(['user_id' => auth('sanctum')->id()])->all();
 
 		$orders = $this->orderRepository->ordersPaginate($filter, isUser: true);
-
+		Log::info('returned order:',['ord:',OrderResource::collection($orders)]);
 		return OrderResource::collection($orders);
 	}
 
@@ -65,11 +69,10 @@ class OrderController extends UserBaseController
 	 */
 	public function store(UserStoreRequest $request): JsonResponse
 	{
-		Log::info("post req geldi");
+		Log::info('req all:', ['request:', $request->all()]);
 		$validated = $request->validated();
+		Log::info("post req geldi", ['partial validated:', $validated]);
 
-
-		Log::info('validate:', ['validate' => $validated]);
 		if ((int)data_get(Settings::where('key', 'order_auto_approved')->first(), 'value') === 1) {
 			$validated['status'] = Order::STATUS_ACCEPTED;
 		}
@@ -130,6 +133,9 @@ class OrderController extends UserBaseController
 		);
 	}
 
+
+
+
 	/**
 	 * Display the specified resource.
 	 *
@@ -141,7 +147,7 @@ class OrderController extends UserBaseController
 		Log::info('user show');
 		LOg::info('hemde admin show');
 		$order = $this->orderRepository->orderById($id, userId: auth('sanctum')->id());
-		
+
 		if (optional($order)->user_id !== auth('sanctum')->id()) {
 			return $this->onErrorResponse([
 				'code'    => ResponseError::ERROR_404,

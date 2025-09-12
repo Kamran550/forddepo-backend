@@ -8,10 +8,12 @@ use App\Repositories\Interfaces\OrderRepoInterface;
 use App\Repositories\Interfaces\ProductRepoInterface;
 use App\Repositories\Interfaces\ShopRepoInterface;
 use App\Repositories\Interfaces\UserRepoInterface;
+use App\Repositories\Interfaces\WarehouseRepoInterface;
 use App\Repositories\OrderRepository\OrderRepository;
 use App\Repositories\ProductRepository\ProductRepository;
 use App\Repositories\ShopRepository\ShopRepository;
 use App\Repositories\UserRepository\UserRepository;
+use App\Repositories\WarehouseRepository\WarehouseRepository;
 use App\Services\BrandService\BrandService;
 use App\Services\CategoryServices\CategoryService;
 use App\Services\CurrencyServices\CurrencyService;
@@ -45,6 +47,7 @@ class RepositoryProvider extends ServiceProvider
         $this->app->bind(ShopRepoInterface::class, ShopRepository::class);
         $this->app->bind(ProductRepoInterface::class, ProductRepository::class);
         $this->app->bind(OrderRepoInterface::class, OrderRepository::class);
+        $this->app->bind(WarehouseRepoInterface::class, WarehouseRepository::class);
 
         // Services biding
         $this->app->bind(UserServiceInterface::class, UserService::class);
@@ -62,8 +65,5 @@ class RepositoryProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot(): void
-    {
-
-    }
+    public function boot(): void {}
 }

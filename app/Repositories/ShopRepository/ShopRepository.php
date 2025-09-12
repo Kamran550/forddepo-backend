@@ -27,10 +27,10 @@ use Throwable;
 
 class ShopRepository extends CoreRepository implements ShopRepoInterface
 {
-    protected function getModelClass(): string
-    {
-        return Shop::class;
-    }
+	protected function getModelClass(): string
+	{
+		return Shop::class;
+	}
 
 	public function getWith(): array
 	{
@@ -69,174 +69,281 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 
 		return $with;
 	}
-    /**
-     * Get all Shops from table
-     */
-    public function shopsList(array $filter = []): array|Collection|\Illuminate\Support\Collection
-    {
-        /** @var Shop $shop */
+	/**
+	 * Get all Shops from table
+	 */
+	public function shopsList(array $filter = []): array|Collection|\Illuminate\Support\Collection
+	{
+		/** @var Shop $shop */
 
-        $shop = $this->model();
+		$shop = $this->model();
 
-        return $shop
-            ->filter($filter)
-            ->with([
-                'translation' => fn($q) => $q->where('locale', $this->language),
-                'seller'      => fn($q) => $q->select('id', 'firstname', 'lastname', 'uuid'),
-                'seller.roles',
-            ])
-            ->whereHas('translation', fn($q) => $q->where('locale', $this->language))
-            ->orderByDesc('id')
-            ->limit(data_get($filter, 'perPage', 1))
-            ->offset(data_get($filter, 'page', 0))
-            ->get();
-    }
+		return $shop
+			->filter($filter)
+			->with([
+				'translation' => fn($q) => $q->where('locale', $this->language),
+				'seller'      => fn($q) => $q->select('id', 'firstname', 'lastname', 'uuid'),
+				'seller.roles',
+			])
+			->whereHas('translation', fn($q) => $q->where('locale', $this->language))
+			->orderByDesc('id')
+			->limit(data_get($filter, 'perPage', 1))
+			->offset(data_get($filter, 'page', 0))
+			->get();
+	}
 
-    /**
-     * Get one Shop by UUID
-     * @param array $filter
-     * @return LengthAwarePaginator
-     */
-    public function shopsPaginate(array $filter): LengthAwarePaginator
-    {
+	/**
+	 * Get one Shop by UUID
+	 * @param array $filter
+	 * @return LengthAwarePaginator
+	 */
+	public function shopsPaginate(array $filter): LengthAwarePaginator
+	{
 		Log::info('Shop repository1');
-        /** @var Shop $shop */
-        $shop = $this->model();
+		/** @var Shop $shop */
+		$shop = $this->model();
+		return $shop
+			->filter($filter)
+			->with([
+				'translation' => function ($query) use ($filter) {
 
-        return $shop
-            ->filter($filter)
-            ->with([
-                'translation' => function ($query) use ($filter) {
+					$query->when(
+						data_get($filter, 'not_lang'),
+						fn($q, $notLang) => $q->where('locale', '!=', data_get($filter, 'not_lang')),
+						fn($q) => $q->where('locale', '=', $this->language),
+					);
+				},
+				'bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)
+					->select([
+						'bonusable_type',
+						'bonusable_id',
+						'bonus_quantity',
+						'bonus_stock_id',
+						'expired_at',
+						'value',
+						'type',
+						'status',
+					]),
+				'bonus.stock.countable:id,uuid',
+				'bonus.stock.countable.translation' => fn($q) => $q->where('locale', $this->language)
+					->select('id', 'locale', 'title', 'product_id'),
+				'closedDates',
+				'workingDays' => fn($q) => $q->when(
+					data_get($filter, 'work_24_7'),
+					fn($b) => $b->where('from', '01-00')->where('to', '>=', '23-00')
+				),
+				'discounts' => fn($q) => $q
+					->where('end', '>=', now())
+					->where('active', 1)
+					->select('id', 'shop_id', 'end', 'active'),
+			])
+			->whereHas('translation', function ($query) use ($filter) {
 
-                    $query->when(data_get($filter, 'not_lang'),
-                        fn($q, $notLang) => $q->where('locale', '!=', data_get($filter, 'not_lang')),
-                        fn($q) => $q->where('locale', '=', $this->language),
-                    );
+				$query->when(
+					data_get($filter, 'not_lang'),
+					fn($q, $notLang) => $q->where('locale', '!=', data_get($filter, 'not_lang')),
+					fn($q) => $q->where('locale', '=', $this->language),
+				);
+			})
+			->when(data_get($filter, 'prices'), function (Builder $q, $prices) {
 
-                },
-                'bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)
-                    ->select([
-                        'bonusable_type',
-                        'bonusable_id',
-                        'bonus_quantity',
-                        'bonus_stock_id',
-                        'expired_at',
-                        'value',
-                        'type',
-                        'status',
-                    ]),
-                'bonus.stock.countable:id,uuid',
-                'bonus.stock.countable.translation' => fn($q) => $q->where('locale', $this->language)
-                    ->select('id', 'locale', 'title', 'product_id'),
-                'closedDates',
-                'workingDays' => fn($q) => $q->when(data_get($filter, 'work_24_7'),
-                    fn($b) => $b->where('from', '01-00')->where('to', '>=', '23-00')
-                ),
-                'discounts' => fn($q) => $q
-                    ->where('end', '>=', now())
-                    ->where('active', 1)
-                    ->select('id', 'shop_id', 'end', 'active'),
-            ])
-            ->whereHas('translation', function ($query) use ($filter) {
+				$to   = data_get($prices, 0, 1) / $this->currency;
+				$from = data_get($prices, 1, 1) / $this->currency;
 
-                $query->when(data_get($filter, 'not_lang'),
-                    fn($q, $notLang) => $q->where('locale', '!=', data_get($filter, 'not_lang')),
-                    fn($q) => $q->where('locale', '=', $this->language),
-                );
+				$q->whereHas('products.stocks', fn($q) => $q->where([
+					['price', '>=', $to],
+					['price', '<=', $to >= $from ? Stock::max('price') : $from],
+				]));
+			})
+			->withCount('reviews')
+			->when(data_get($filter, 'rating'), function (Builder $q, $rating) {
 
-            })
-            ->when(data_get($filter, 'prices'), function (Builder $q, $prices) {
+				$rtg = [
+					0 => data_get($rating, 0, 0),
+					1 => data_get($rating, 1, 5),
+				];
 
-                $to   = data_get($prices, 0, 1) / $this->currency;
-                $from = data_get($prices, 1, 1) / $this->currency;
-
-                $q->whereHas('products.stocks', fn($q) => $q->where([
-                    ['price', '>=', $to],
-                    ['price', '<=', $to >= $from ? Stock::max('price') : $from],
-                ]));
-
-            })
-            ->withCount('reviews')
-            ->when(data_get($filter, 'rating'), function (Builder $q, $rating) {
-
-                $rtg = [
-                    0 => data_get($rating, 0, 0),
-                    1 => data_get($rating, 1, 5),
-                ];
-
-                $q
-                    ->withAvg([
-                        'reviews' => fn(Builder $b) => $b->whereBetween('rating', $rtg)
-                    ], 'rating')
+				$q
+					->withAvg([
+						'reviews' => fn(Builder $b) => $b->whereBetween('rating', $rtg)
+					], 'rating')
 					->having('reviews_avg_rating', '>=', $rtg[0])
 					->having('reviews_avg_rating', '<=', $rtg[1]);
+			}, fn($q) => $q->withAvg('reviews', 'rating'))
+			->when(data_get($filter, 'order_by'), function (Builder $query, $orderBy) {
 
-            }, fn($q) => $q->withAvg('reviews', 'rating'))
-            ->when(data_get($filter, 'order_by'), function (Builder $query, $orderBy) {
+				switch ($orderBy) {
+					case 'new':
+						$query->orderBy('created_at', 'desc');
+						break;
+					case 'old':
+						$query->orderBy('created_at');
+						break;
+					case 'best_sale':
+						$query->withCount('orders')->orderBy('orders_count', 'desc');
+						break;
+					case 'low_sale':
+						$query->withCount('orders')->orderBy('orders_count');
+						break;
+					case 'high_rating':
+						$query->orderBy('reviews_avg_rating', 'desc');
+						break;
+					case 'low_rating':
+						$query->orderBy('reviews_avg_rating');
+						break;
+					case 'trust_you':
+						$ids = implode(', ', array_keys(Cache::get('shop-recommended-ids', [])));
+						if (!empty($ids)) {
+							$query->orderByRaw(DB::raw("FIELD(id, $ids) ASC"));
+						}
+						break;
+				}
+			}, fn($q) => data_get($filter, 'address') ? $q->orderBy(
+				data_get($filter, 'column', 'id'),
+				data_get($filter, 'sort', 'desc')
+			) : $q)
+			->paginate(data_get($filter, 'perPage', 10));
+	}
 
-                switch ($orderBy) {
-                    case 'new':
-                        $query->orderBy('created_at', 'desc');
-                        break;
-                    case 'old':
-                        $query->orderBy('created_at');
-                        break;
-                    case 'best_sale':
-                        $query->withCount('orders')->orderBy('orders_count', 'desc');
-                        break;
-                    case 'low_sale':
-                        $query->withCount('orders')->orderBy('orders_count');
-                        break;
-                    case 'high_rating':
-                        $query->orderBy('reviews_avg_rating', 'desc');
-                        break;
-                    case 'low_rating':
-                        $query->orderBy('reviews_avg_rating');
-                        break;
-                    case 'trust_you':
-                        $ids = implode(', ', array_keys(Cache::get('shop-recommended-ids', [])));
-                        if (!empty($ids)) {
-                            $query->orderByRaw(DB::raw("FIELD(id, $ids) ASC"));
-                        }
-                        break;
-                }
 
-            }, fn($q) => data_get($filter, 'address') ? $q->orderBy(
-                data_get($filter, 'column', 'id'),
-                data_get($filter, 'sort', 'desc')
-            ) : $q)
-            ->paginate(data_get($filter, 'perPage', 10));
-    }
+	public function shopsPaginateWeb(array $filter): LengthAwarePaginator
+	{
+		Log::info('Shop repository1');
+		/** @var Shop $shop */
+		$shop = $this->model()->visible();
+		return $shop
+			->filter($filter)
+			->with([
+				'translation' => function ($query) use ($filter) {
 
-    /**
-     * Get one Shop by UUID
-     * @param array $filter
-     * @return LengthAwarePaginator
-     */
-    public function selectPaginate(array $filter): LengthAwarePaginator
-    {
-        /** @var Shop $shop */
-        $shop = $this->model();
+					$query->when(
+						data_get($filter, 'not_lang'),
+						fn($q, $notLang) => $q->where('locale', '!=', data_get($filter, 'not_lang')),
+						fn($q) => $q->where('locale', '=', $this->language),
+					);
+				},
+				'bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)
+					->select([
+						'bonusable_type',
+						'bonusable_id',
+						'bonus_quantity',
+						'bonus_stock_id',
+						'expired_at',
+						'value',
+						'type',
+						'status',
+					]),
+				'bonus.stock.countable:id,uuid',
+				'bonus.stock.countable.translation' => fn($q) => $q->where('locale', $this->language)
+					->select('id', 'locale', 'title', 'product_id'),
+				'closedDates',
+				'workingDays' => fn($q) => $q->when(
+					data_get($filter, 'work_24_7'),
+					fn($b) => $b->where('from', '01-00')->where('to', '>=', '23-00')
+				),
+				'discounts' => fn($q) => $q
+					->where('end', '>=', now())
+					->where('active', 1)
+					->select('id', 'shop_id', 'end', 'active'),
+			])
+			->whereHas('translation', function ($query) use ($filter) {
 
-        return $shop
-            ->filter($filter)
-            ->with([
-                'translation' => fn($q) => $q->where('locale', $this->language)
-                    ->select('id', 'locale', 'title', 'shop_id'),
-            ])
-            ->whereHas('translation', fn($q) => $q->where('locale', $this->language))
-            ->select([
-                'id',
-            ])
-            ->paginate(data_get($filter, 'perPage', 10));
-    }
+				$query->when(
+					data_get($filter, 'not_lang'),
+					fn($q, $notLang) => $q->where('locale', '!=', data_get($filter, 'not_lang')),
+					fn($q) => $q->where('locale', '=', $this->language),
+				);
+			})
+			->when(data_get($filter, 'prices'), function (Builder $q, $prices) {
 
-    /**
-     * @param string $uuid
-     * @return Model|Builder|null
-     */
-    public function shopDetails(string $uuid): Model|Builder|null
-    {
+				$to   = data_get($prices, 0, 1) / $this->currency;
+				$from = data_get($prices, 1, 1) / $this->currency;
+
+				$q->whereHas('products.stocks', fn($q) => $q->where([
+					['price', '>=', $to],
+					['price', '<=', $to >= $from ? Stock::max('price') : $from],
+				]));
+			})
+			->withCount('reviews')
+			->when(data_get($filter, 'rating'), function (Builder $q, $rating) {
+
+				$rtg = [
+					0 => data_get($rating, 0, 0),
+					1 => data_get($rating, 1, 5),
+				];
+
+				$q
+					->withAvg([
+						'reviews' => fn(Builder $b) => $b->whereBetween('rating', $rtg)
+					], 'rating')
+					->having('reviews_avg_rating', '>=', $rtg[0])
+					->having('reviews_avg_rating', '<=', $rtg[1]);
+			}, fn($q) => $q->withAvg('reviews', 'rating'))
+			->when(data_get($filter, 'order_by'), function (Builder $query, $orderBy) {
+
+				switch ($orderBy) {
+					case 'new':
+						$query->orderBy('created_at', 'desc');
+						break;
+					case 'old':
+						$query->orderBy('created_at');
+						break;
+					case 'best_sale':
+						$query->withCount('orders')->orderBy('orders_count', 'desc');
+						break;
+					case 'low_sale':
+						$query->withCount('orders')->orderBy('orders_count');
+						break;
+					case 'high_rating':
+						$query->orderBy('reviews_avg_rating', 'desc');
+						break;
+					case 'low_rating':
+						$query->orderBy('reviews_avg_rating');
+						break;
+					case 'trust_you':
+						$ids = implode(', ', array_keys(Cache::get('shop-recommended-ids', [])));
+						if (!empty($ids)) {
+							$query->orderByRaw(DB::raw("FIELD(id, $ids) ASC"));
+						}
+						break;
+				}
+			}, fn($q) => data_get($filter, 'address') ? $q->orderBy(
+				data_get($filter, 'column', 'id'),
+				data_get($filter, 'sort', 'desc')
+			) : $q)
+			->paginate(data_get($filter, 'perPage', 10));
+	}
+
+
+	/**
+	 * Get one Shop by UUID
+	 * @param array $filter
+	 * @return LengthAwarePaginator
+	 */
+	public function selectPaginate(array $filter): LengthAwarePaginator
+	{
+		/** @var Shop $shop */
+		$shop = $this->model();
+
+		return $shop
+			->filter($filter)
+			->with([
+				'translation' => fn($q) => $q->where('locale', $this->language)
+					->select('id', 'locale', 'title', 'shop_id'),
+			])
+			->whereHas('translation', fn($q) => $q->where('locale', $this->language))
+			->select([
+				'id',
+			])
+			->paginate(data_get($filter, 'perPage', 10));
+	}
+
+	/**
+	 * @param string $uuid
+	 * @return Model|Builder|null
+	 */
+	public function shopDetails(string $uuid): Model|Builder|null
+	{
 		$shop = Shop::withAvg('reviews', 'rating')
 			->withCount('reviews')
 			->where('uuid', $uuid)
@@ -249,222 +356,224 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 				->first();
 		}
 
-        return $shop?->loadMissing($this->getWith());
-    }
+		return $shop?->loadMissing($this->getWith());
+	}
 
-    /**
-     * @param string $slug
-     * @return Model|Builder|null
-     */
-    public function shopDetailsBySlug(string $slug): Model|Builder|null
-    {
-        /** @var Shop $shop */
-        $shop = $this->model();
+	/**
+	 * @param string $slug
+	 * @return Model|Builder|null
+	 */
+	public function shopDetailsBySlug(string $slug): Model|Builder|null
+	{
+		/** @var Shop $shop */
+		$shop = $this->model();
 
-        return $shop->with($this->getWith())
-            ->where(fn($q) => $q->where('slug', $slug))
-            ->first();
-    }
+		return $shop->with($this->getWith())
+			->where(fn($q) => $q->where('slug', $slug))
+			->first();
+	}
 
-    /**
-     * @param array $filter
-     * @return Collection|array
-     */
-    public function takes(array $filter): Collection|array
-    {
-        $locale = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
+	/**
+	 * @param array $filter
+	 * @return Collection|array
+	 */
+	public function takes(array $filter): Collection|array
+	{
+		$locale = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
 
-        return ShopTag::with([
-            'translation' => fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
-        ])
-            ->when(data_get($filter, 'category_id'), function ($query, $categoryId) {
-                $query->whereHas('assignShopTags', function ($q) use ($categoryId) {
-                    $q->whereHas('shop', function ($q) use ($categoryId) {
-                        $q
-                            ->select('id')
-                            ->whereHas('categories', function ($q) use ($categoryId) {
-                                $q->select('category_id', 'categories.shop_id')->where('category_id', $categoryId);
-                            });
-                    });
-                });
-            })
-            ->get();
-    }
+		return ShopTag::with([
+			'translation' => fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+		])
+			->when(data_get($filter, 'category_id'), function ($query, $categoryId) {
+				$query->whereHas('assignShopTags', function ($q) use ($categoryId) {
+					$q->whereHas('shop', function ($q) use ($categoryId) {
+						$q
+							->select('id')
+							->whereHas('categories', function ($q) use ($categoryId) {
+								$q->select('category_id', 'categories.shop_id')->where('category_id', $categoryId);
+							});
+					});
+				});
+			})
+			->get();
+	}
 
-    /**
-     * @return mixed
-     */
-    public function productsAvgPrices(): mixed
-    {
-        return Cache::remember('products-avg-prices', 86400, function () {
+	/**
+	 * @return mixed
+	 */
+	public function productsAvgPrices(): mixed
+	{
+		return Cache::remember('products-avg-prices', 86400, function () {
 
-            $min = Stock::where('price', '>=', 0)
+			$min = Stock::where('price', '>=', 0)
 				->where('quantity', '>', 0)
-                ->whereHas('countable', fn($q) => $q->where('status', Product::PUBLISHED)->where('active', true))
-                ->min('price');
+				->whereHas('countable', fn($q) => $q->where('status', Product::PUBLISHED)->where('active', true))
+				->min('price');
 
-            $max = Stock::where('price', '>=', 0)
+			$max = Stock::where('price', '>=', 0)
 				->where('quantity', '>', 0)
-                ->whereHas('countable', fn($q) => $q->where('status', Product::PUBLISHED)->where('active', true))
-                ->max('price');
+				->whereHas('countable', fn($q) => $q->where('status', Product::PUBLISHED)->where('active', true))
+				->max('price');
 
-            return [
-                'min' => $min * $this->currency,
-                'max' => ($min === $max ? $max + 1 : $max) * $this->currency,
-            ];
-        });
-    }
+			return [
+				'min' => $min * $this->currency,
+				'max' => ($min === $max ? $max + 1 : $max) * $this->currency,
+			];
+		});
+	}
 
-    /**
-     * @param array $filter
-     * @return LengthAwarePaginator
-     */
-    public function shopsSearch(array $filter): LengthAwarePaginator
-    {
-        /** @var Shop $shop */
-        $shop = $this->model();
+	/**
+	 * @param array $filter
+	 * @return LengthAwarePaginator
+	 */
+	public function shopsSearch(array $filter): LengthAwarePaginator
+	{
+		Log::info('search filter beledir:', ['filt:', $filter]);
+		/** @var Shop $shop */
+		$shop = $this->model()->visible();
 
-        return $shop
-            ->filter($filter)
-            ->with([
-                'translation'   => fn($q) => $q->where('locale', $this->language),
-                'discounts'     => fn($q) => $q->where('end', '>=', now())->where('active', 1)
-                    ->select('id', 'shop_id', 'end', 'active'),
-            ])
-            ->whereHas('translation', fn($q) => $q->where('locale', $this->language))
-            ->latest()
-            ->select([
-                'id',
-                'logo_img',
+		return $shop
+			->filter($filter)
+			->with([
+				'translation'   => fn($q) => $q->where('locale', $this->language),
+				'discounts'     => fn($q) => $q->where('end', '>=', now())->where('active', 1)
+					->select('id', 'shop_id', 'end', 'active'),
+			])
+			->whereHas('translation', fn($q) => $q->where('locale', $this->language))
+			->latest()
+			->select([
+				'id',
+				'logo_img',
 				'background_img',
 				'status',
 				'open',
-            ])
-            ->paginate(data_get($filter, 'perPage', 10));
-    }
+			])
+			->paginate(data_get($filter, 'perPage', 10));
+	}
 
-    /**
-     * @param array $filter
-     * @return mixed
-     */
-    public function shopsByIDs(array $filter): mixed
-    {
-        /** @var Shop $shop */
-        $shop = $this->model();
+	/**
+	 * @param array $filter
+	 * @return mixed
+	 */
+	public function shopsByIDs(array $filter): mixed
+	{
+		/** @var Shop $shop */
+		$shop = $this->model();
 
-        return $shop->with([
-            'translation'   => fn($q) => $q->where('locale', $this->language),
-            'discounts'     => fn($q) => $q->where('end', '>=', now())->where('active', 1)
-                ->select('id', 'shop_id', 'end', 'active'),
-            'tags:id,img',
-            'tags.translation' => fn($q) => $q->where('locale', $this->language),
-        ])
-            ->withAvg('reviews', 'rating')
-            ->withCount('reviews')
-            ->when(data_get($filter, 'status'), fn($q, $status) => $q->where('status', $status))
-            ->find(data_get($filter, 'shops', []));
-    }
+		return $shop->with([
+			'translation'   => fn($q) => $q->where('locale', $this->language),
+			'discounts'     => fn($q) => $q->where('end', '>=', now())->where('active', 1)
+				->select('id', 'shop_id', 'end', 'active'),
+			'tags:id,img',
+			'tags.translation' => fn($q) => $q->where('locale', $this->language),
+		])
+			->withAvg('reviews', 'rating')
+			->withCount('reviews')
+			->when(data_get($filter, 'status'), fn($q, $status) => $q->where('status', $status))
+			->find(data_get($filter, 'shops', []));
+	}
 
-    public function recommended(array $filter): array
-    {
-//        if (!empty(Cache::get('shops-recommended'))) {
-//            return Cache::get('shops-recommended');
-//        }
+	public function recommended(array $filter): array
+	{
+		//        if (!empty(Cache::get('shops-recommended'))) {
+		//            return Cache::get('shops-recommended');
+		//        }
 
-        $recommendedCount = (int)(Settings::where('key', 'recommended_count')->first()?->value ?? 2);
+		$recommendedCount = (int)(Settings::where('key', 'recommended_count')->first()?->value ?? 2);
 
-        $shops = Shop::filter($filter)
-            ->with([
-                'orders' => fn($q) => $q
-                    ->whereHas('orderDetails')
-                    ->with([
-                        'orderDetails' => fn($od) => $od->with([
-                            'stock' => fn($s) => $s->with([
-                                'countable' => fn($c) => $c->where('active', true)->where('addon', false)
-                                    ->where('status', Product::PUBLISHED)
-                            ])
-                                ->whereHas('countable', fn($c) => $c->where('active', true)
-                                    ->where('addon', false)
-                                    ->where('status', Product::PUBLISHED)
-                                )
-                                ->where('quantity', '>', 0)
-                        ])->whereHas('stock', fn($s) => $s->where('quantity', '>', 0)),
-                    ])
-                    ->whereStatus(Order::STATUS_DELIVERED)
-                    ->where('created_at', '>=', date('Y-m-d 00:00:01', strtotime('-30 days'))),
-                'translation' => fn($q) => $q
-                    ->where('locale', $this->language),
-            ])
-            ->whereHas('orders', fn($q) => $q
-                ->whereStatus(Order::STATUS_DELIVERED)
-                ->where('created_at', '>=', date('Y-m-d 00:00:01', strtotime('-30 days'))),
-            )
-            ->select([
-                'id',
-                'uuid',
-                'background_img',
-                'logo_img',
-                'open',
-                'status',
-            ])
-            ->where('open', 1)
-            ->where('status', 'approved')
-            ->get();
+		$shops = Shop::filter($filter)
+			->with([
+				'orders' => fn($q) => $q
+					->whereHas('orderDetails')
+					->with([
+						'orderDetails' => fn($od) => $od->with([
+							'stock' => fn($s) => $s->with([
+								'countable' => fn($c) => $c->where('active', true)->where('addon', false)
+									->where('status', Product::PUBLISHED)
+							])
+								->whereHas(
+									'countable',
+									fn($c) => $c->where('active', true)
+										->where('addon', false)
+										->where('status', Product::PUBLISHED)
+								)
+								->where('quantity', '>', 0)
+						])->whereHas('stock', fn($s) => $s->where('quantity', '>', 0)),
+					])
+					->whereStatus(Order::STATUS_DELIVERED)
+					->where('created_at', '>=', date('Y-m-d 00:00:01', strtotime('-30 days'))),
+				'translation' => fn($q) => $q
+					->where('locale', $this->language),
+			])
+			->whereHas(
+				'orders',
+				fn($q) => $q
+					->whereStatus(Order::STATUS_DELIVERED)
+					->where('created_at', '>=', date('Y-m-d 00:00:01', strtotime('-30 days'))),
+			)
+			->select([
+				'id',
+				'uuid',
+				'background_img',
+				'logo_img',
+				'open',
+				'status',
+			])
+			->where('open', 1)
+			->where('status', 'approved')
+			->get();
 
-        $result = [];
-        $cache  = [];
+		$result = [];
+		$cache  = [];
 
-        foreach ($shops as $shop) {
+		foreach ($shops as $shop) {
 
-            /** @var Shop $shop */
-            $result[$shop->id] = [];
-            $result[$shop->id]['id']               = $shop->id;
-            $result[$shop->id]['uuid']             = $shop->uuid;
-            $result[$shop->id]['background_img']   = $shop->background_img;
-            $result[$shop->id]['logo_img']         = $shop->logo_img;
-            $result[$shop->id]['translation']      = $shop->translation;
-            $result[$shop->id]['open']             = $shop->open;
-            $result[$shop->id]['products_count']   = 0;
+			/** @var Shop $shop */
+			$result[$shop->id] = [];
+			$result[$shop->id]['id']               = $shop->id;
+			$result[$shop->id]['uuid']             = $shop->uuid;
+			$result[$shop->id]['background_img']   = $shop->background_img;
+			$result[$shop->id]['logo_img']         = $shop->logo_img;
+			$result[$shop->id]['translation']      = $shop->translation;
+			$result[$shop->id]['open']             = $shop->open;
+			$result[$shop->id]['products_count']   = 0;
 
-            foreach ($shop->orders as $order) {
+			foreach ($shop->orders as $order) {
 
-                /** @var Order $order */
-                if ($order->orderDetails?->count() === 0) {
-                    continue;
-                }
+				/** @var Order $order */
+				if ($order->orderDetails?->count() === 0) {
+					continue;
+				}
 
-                $productsCount = $order->orderDetails
-                    ->where('stock.countable.status', Product::PUBLISHED)
-                    ->groupBy('stock.countable.id')
-                    ->keys()
-                    ->toArray();
+				$productsCount = $order->orderDetails
+					->where('stock.countable.status', Product::PUBLISHED)
+					->groupBy('stock.countable.id')
+					->keys()
+					->toArray();
 
-                if (!empty(data_get($cache, $shop->id))) {
-                    $cache[$shop->id] = array_unique(array_merge($productsCount, $cache[$shop->id]));
-                } else {
-                    $cache[$shop->id] = $productsCount;
-                }
+				if (!empty(data_get($cache, $shop->id))) {
+					$cache[$shop->id] = array_unique(array_merge($productsCount, $cache[$shop->id]));
+				} else {
+					$cache[$shop->id] = $productsCount;
+				}
+			}
 
-            }
+			$result[$shop->id]['products_count'] += count(data_get($cache, "$shop->id", []));
 
-            $result[$shop->id]['products_count'] += count(data_get($cache, "$shop->id", []));
+			if ((int)data_get($result, "$shop->id.products_count") < $recommendedCount) {
+				unset($result[$shop->id]);
+			}
+		}
 
-            if ((int)data_get($result, "$shop->id.products_count") < $recommendedCount) {
-                unset($result[$shop->id]);
-            }
-
-        }
-
-        $result = collect($result)->toArray();
+		$result = collect($result)->toArray();
 
 		try {
 			Cache::put('shop-recommended-ids', $cache, 86400); // 1 day
 		} catch (Throwable) {
-
 		}
 
-        return array_values($result);
-    }
+		return array_values($result);
+	}
 
 	public function productsRecPaginate(array $filter): AnonymousResourceCollection
 	{
@@ -550,7 +659,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 			['active', true],
 		])
 			->with([
-				'translation' => function ($q) use($locale) {
+				'translation' => function ($q) use ($locale) {
 					$q
 						->select('id', 'locale', 'title', 'category_id')
 						->where('locale', $this->language)
@@ -565,12 +674,23 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 						'translation' => fn($q) => $q->where('locale', $this->language),
 						'stock' => fn($q) => $q->with([
 							'bonus' => fn($q) => $q->where('expired_at', '>', now())->select([
-								'id', 'expired_at', 'bonusable_type', 'bonusable_id',
-								'bonus_quantity', 'value', 'type', 'status'
+								'id',
+								'expired_at',
+								'bonusable_type',
+								'bonusable_id',
+								'bonus_quantity',
+								'value',
+								'type',
+								'status'
 							])
 						])
 							->select([
-								'id', 'countable_type', 'countable_id', 'price', 'quantity', 'addon'
+								'id',
+								'countable_type',
+								'countable_id',
+								'price',
+								'quantity',
+								'addon'
 							])
 							->where('quantity', '>', 0)
 							->where('addon', false),
@@ -596,56 +716,59 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 					->where('addon', false)
 					->where('status', Product::PUBLISHED)
 					->where('shop_id', $shopId)
-					->when(data_get($filter, 'order_by'), function (Builder $query, $orderBy) {
+					->when(
+						data_get($filter, 'order_by'),
+						function (Builder $query, $orderBy) {
 
-						switch ($orderBy) {
-							case 'new':
-								$query->orderBy('created_at', 'desc');
-								break;
-							case 'old':
-								$query->orderBy('created_at');
-								break;
-							case 'best_sale':
-								$query->withCount('orderDetails')->orderBy('order_details_count', 'desc');
-								break;
-							case 'low_sale':
-								$query->withCount('orderDetails')->orderBy('order_details_count');
-								break;
-							case 'trust_you':
-								$ids = implode(', ', array_keys(Cache::get('shop-recommended-ids', [])));
-								if (!empty($ids)) {
-									$query->orderByRaw(DB::raw("FIELD(id, $ids) ASC"));
-								}
-								break;
-						}
-
-					},
+							switch ($orderBy) {
+								case 'new':
+									$query->orderBy('created_at', 'desc');
+									break;
+								case 'old':
+									$query->orderBy('created_at');
+									break;
+								case 'best_sale':
+									$query->withCount('orderDetails')->orderBy('order_details_count', 'desc');
+									break;
+								case 'low_sale':
+									$query->withCount('orderDetails')->orderBy('order_details_count');
+									break;
+								case 'trust_you':
+									$ids = implode(', ', array_keys(Cache::get('shop-recommended-ids', [])));
+									if (!empty($ids)) {
+										$query->orderByRaw(DB::raw("FIELD(id, $ids) ASC"));
+									}
+									break;
+							}
+						},
 						fn($q) => $q->orderBy(
 							data_get($filter, 'column', 'id'),
 							data_get($filter, 'sort', 'desc')
 						)
 					)
 			])
-			->whereHas('products', fn($q) => $q
-				->select([
-					'id',
-					'uuid',
-					'category_id',
-					'shop_id',
-					'img',
-					'status',
-					'shop_id',
-					'active',
-					'max_qty',
-					'min_qty',
-					'addon',
-					'vegetarian',
-				])
-				->where('active', true)
-				->where('addon', false)
-				->where('status', Product::PUBLISHED)
-				->where('shop_id', $shopId)
-				->whereHas('stock', fn($q) => $q->where('quantity', '>', 0)->where('addon', false))
+			->whereHas(
+				'products',
+				fn($q) => $q
+					->select([
+						'id',
+						'uuid',
+						'category_id',
+						'shop_id',
+						'img',
+						'status',
+						'shop_id',
+						'active',
+						'max_qty',
+						'min_qty',
+						'addon',
+						'vegetarian',
+					])
+					->where('active', true)
+					->where('addon', false)
+					->where('status', Product::PUBLISHED)
+					->where('shop_id', $shopId)
+					->whereHas('stock', fn($q) => $q->where('quantity', '>', 0)->where('addon', false))
 			)
 			->whereHas('translation', fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)))
 			->orderBy($column, data_get($filter, 'sort', 'asc'))
@@ -663,12 +786,23 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 					'translation' => fn($q) => $q->where('locale', $this->language),
 					'stock' => fn($q) => $q->with([
 						'bonus' => fn($q) => $q->where('expired_at', '>', now())->select([
-							'id', 'expired_at', 'bonusable_type', 'bonusable_id',
-							'bonus_quantity', 'value', 'type', 'status'
+							'id',
+							'expired_at',
+							'bonusable_type',
+							'bonusable_id',
+							'bonus_quantity',
+							'value',
+							'type',
+							'status'
 						])
 					])
 						->select([
-							'id', 'countable_type', 'countable_id', 'price', 'quantity', 'addon'
+							'id',
+							'countable_type',
+							'countable_id',
+							'price',
+							'quantity',
+							'addon'
 						])
 						->where('quantity', '>', 0)
 						->where('addon', false),
@@ -690,30 +824,31 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 					'addon',
 					'vegetarian',
 				])
-				->when(data_get($filter, 'order_by'), function (Builder $query, $orderBy) {
+				->when(
+					data_get($filter, 'order_by'),
+					function (Builder $query, $orderBy) {
 
-					switch ($orderBy) {
-						case 'new':
-							$query->orderBy('created_at', 'desc');
-							break;
-						case 'old':
-							$query->orderBy('created_at');
-							break;
-						case 'best_sale':
-							$query->withCount('orderDetails')->orderBy('order_details_count', 'desc');
-							break;
-						case 'low_sale':
-							$query->withCount('orderDetails')->orderBy('order_details_count');
-							break;
-						case 'trust_you':
-							$ids = implode(', ', array_keys(Cache::get('shop-recommended-ids', [])));
-							if (!empty($ids)) {
-								$query->orderByRaw(DB::raw("FIELD(id, $ids) ASC"));
-							}
-							break;
-					}
-
-				},
+						switch ($orderBy) {
+							case 'new':
+								$query->orderBy('created_at', 'desc');
+								break;
+							case 'old':
+								$query->orderBy('created_at');
+								break;
+							case 'best_sale':
+								$query->withCount('orderDetails')->orderBy('order_details_count', 'desc');
+								break;
+							case 'low_sale':
+								$query->withCount('orderDetails')->orderBy('order_details_count');
+								break;
+							case 'trust_you':
+								$ids = implode(', ', array_keys(Cache::get('shop-recommended-ids', [])));
+								if (!empty($ids)) {
+									$query->orderByRaw(DB::raw("FIELD(id, $ids) ASC"));
+								}
+								break;
+						}
+					},
 					fn($q) => $q->orderBy(
 						data_get($filter, 'column', 'id'),
 						data_get($filter, 'sort', 'desc')
@@ -739,50 +874,56 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 
 
 	/**
-     * @param array $filter
-     * @return array
-     */
-    public function products(array $filter): array
-    {
+	 * @param array $filter
+	 * @return array
+	 */
+	public function products(array $filter): array
+	{
 		/** @var Category $category */
 		$shopId      = data_get($filter, 'shop_id');
 		$category    = Category::with(['children:id,parent_id'])->find(data_get($filter, 'category_id'));
 		$categoryIds = $category?->children?->pluck('id')?->merge([$category?->id])?->toArray();
 		$recommendedCount = (int)(Settings::where('key', 'recommended_count')->first()?->value ?? 2);
 
-        $recommended = Product::with([
-            'stock' => fn($q) => $q
-                ->with([
-                    'bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)->select([
-                        'id', 'expired_at', 'bonusable_type', 'bonusable_id',
-                        'bonus_quantity', 'value', 'type', 'status'
-                    ]),
-                ])
-                ->select([
-                    'id',
-                    'countable_type',
-                    'countable_id',
-                    'price',
-                    'quantity',
-                    'addon',
-                ])
-                ->where('addon', false)
-                ->where('quantity', '>', 0),
-            'translation' => fn($q) => $q->where('locale', $this->language),
-            'discounts' => fn($q) => $q
-                ->where('start', '<=', today())
-                ->where('end', '>=', today())
-                ->where('active', 1),
-        ])
-            ->where('active', true)
-            ->where('addon', false)
-            ->where('status', Product::PUBLISHED)
-            ->where('shop_id', $shopId)
-            ->when($categoryIds, fn($q) => $q->whereIn('category_id', $categoryIds))
-            ->has('category')
+		$recommended = Product::with([
+			'stock' => fn($q) => $q
+				->with([
+					'bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)->select([
+						'id',
+						'expired_at',
+						'bonusable_type',
+						'bonusable_id',
+						'bonus_quantity',
+						'value',
+						'type',
+						'status'
+					]),
+				])
+				->select([
+					'id',
+					'countable_type',
+					'countable_id',
+					'price',
+					'quantity',
+					'addon',
+				])
+				->where('addon', false)
+				->where('quantity', '>', 0),
+			'translation' => fn($q) => $q->where('locale', $this->language),
+			'discounts' => fn($q) => $q
+				->where('start', '<=', today())
+				->where('end', '>=', today())
+				->where('active', 1),
+		])
+			->where('active', true)
+			->where('addon', false)
+			->where('status', Product::PUBLISHED)
+			->where('shop_id', $shopId)
+			->when($categoryIds, fn($q) => $q->whereIn('category_id', $categoryIds))
+			->has('category')
 			->when(data_get($filter, 'brand_id'), fn($q, $brandId) => $q->where('brand_id', $brandId))
 			->when(data_get($filter, 'brand_ids.*'), fn($q) => $q->whereIn('brand_id', $filter['brand_ids']))
-            ->whereHas('stock', function ($query) use ($recommendedCount) {
+			->whereHas('stock', function ($query) use ($recommendedCount) {
 				$query
 					->where('addon', false)
 					->where('quantity', '>', 0)
@@ -790,21 +931,21 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 						$q->whereHas('order', fn($q) => $q->where('status', Order::STATUS_DELIVERED));
 					}, count: $recommendedCount);
 			})
-            ->whereHas('translation', fn($q) => $q->where('locale', $this->language))
-            ->select([
-                'id',
-                'uuid',
-                'category_id',
-                'shop_id',
-                'img',
-                'status',
-                'active',
-                'addon',
-                'min_qty',
+			->whereHas('translation', fn($q) => $q->where('locale', $this->language))
+			->select([
+				'id',
+				'uuid',
+				'category_id',
+				'shop_id',
+				'img',
+				'status',
+				'active',
+				'addon',
+				'min_qty',
 				'max_qty',
 				'interval',
 			])
-            ->get();
+			->get();
 
 		$column = data_get($filter, 'column', 'input');
 
@@ -812,15 +953,16 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 			$column = 'input';
 		}
 
-        $categories = Category::where([
-            ['active', true],
-            ['status', Category::PUBLISHED],
-        ])
-			->when($categoryIds,
+		$categories = Category::where([
+			['active', true],
+			['status', Category::PUBLISHED],
+		])
+			->when(
+				$categoryIds,
 				fn($q) => $q->whereIn('id', $categoryIds)->when($category->type === Category::MAIN, fn($q) => $q->where('type', Category::MAIN)),
 				fn($q, $id) => $q->where('type', Category::MAIN),
 			)
-            ->with([
+			->with([
 				'translation' => fn($q) => $q->where('locale', $this->language)
 					->select('id', 'locale', 'title', 'category_id'),
 
@@ -840,13 +982,23 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 									->where('expired_at', '>', now())
 									->where('status', true)
 									->select([
-										'id', 'expired_at', 'bonusable_type', 'bonusable_id',
-										'bonus_quantity', 'value', 'type', 'status'
+										'id',
+										'expired_at',
+										'bonusable_type',
+										'bonusable_id',
+										'bonus_quantity',
+										'value',
+										'type',
+										'status'
 									])
 							])
 							->select([
-								'id', 'countable_type', 'countable_id',
-								'price', 'quantity', 'addon'
+								'id',
+								'countable_type',
+								'countable_id',
+								'price',
+								'quantity',
+								'addon'
 							])
 							->where('quantity', '>', 0)
 							->where('addon', false),
@@ -887,13 +1039,23 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 									->where('expired_at', '>', now())
 									->where('status', true)
 									->select([
-										'id', 'expired_at', 'bonusable_type', 'bonusable_id',
-										'bonus_quantity', 'value', 'type', 'status'
+										'id',
+										'expired_at',
+										'bonusable_type',
+										'bonusable_id',
+										'bonus_quantity',
+										'value',
+										'type',
+										'status'
 									])
 							])
 							->select([
-								'id', 'countable_type', 'countable_id',
-								'price', 'quantity', 'addon'
+								'id',
+								'countable_type',
+								'countable_id',
+								'price',
+								'quantity',
+								'addon'
 							])
 							->where('quantity', '>', 0)
 							->where('addon', false),
@@ -923,21 +1085,11 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 					])
 
 			])
-            ->where(function ($q) use ($shopId, $categoryIds, $filter) {
+			->where(function ($q) use ($shopId, $categoryIds, $filter) {
 				$q
-					->whereHas('products', fn($q) => $q
-						->whereHas('stock', fn($q) => $q->where('quantity', '>', 0)->where('addon', false))
-						->whereHas('translation', fn($q) => $q->where('locale', $this->language))
-						->where('active', true)
-						->where('addon', false)
-						->where('status', Product::PUBLISHED)
-						->where('shop_id', $shopId)
-						->when($categoryIds, fn($q) => $q->whereIn('category_id', $categoryIds))
-						->when(data_get($filter, 'brand_id'), fn($q, $brandId) => $q->where('brand_id', $brandId))
-						->when(data_get($filter, 'brand_ids.*'), fn($q) => $q->whereIn('brand_id', $filter['brand_ids']))
-					)
-					->orWhereHas('children', fn($q) => $q
-						->whereHas('products', fn($q) => $q
+					->whereHas(
+						'products',
+						fn($q) => $q
 							->whereHas('stock', fn($q) => $q->where('quantity', '>', 0)->where('addon', false))
 							->whereHas('translation', fn($q) => $q->where('locale', $this->language))
 							->where('active', true)
@@ -947,54 +1099,70 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 							->when($categoryIds, fn($q) => $q->whereIn('category_id', $categoryIds))
 							->when(data_get($filter, 'brand_id'), fn($q, $brandId) => $q->where('brand_id', $brandId))
 							->when(data_get($filter, 'brand_ids.*'), fn($q) => $q->whereIn('brand_id', $filter['brand_ids']))
-						)
+					)
+					->orWhereHas(
+						'children',
+						fn($q) => $q
+							->whereHas(
+								'products',
+								fn($q) => $q
+									->whereHas('stock', fn($q) => $q->where('quantity', '>', 0)->where('addon', false))
+									->whereHas('translation', fn($q) => $q->where('locale', $this->language))
+									->where('active', true)
+									->where('addon', false)
+									->where('status', Product::PUBLISHED)
+									->where('shop_id', $shopId)
+									->when($categoryIds, fn($q) => $q->whereIn('category_id', $categoryIds))
+									->when(data_get($filter, 'brand_id'), fn($q, $brandId) => $q->where('brand_id', $brandId))
+									->when(data_get($filter, 'brand_ids.*'), fn($q) => $q->whereIn('brand_id', $filter['brand_ids']))
+							)
 					);
 			})
 			->whereHas('translation', fn($q) => $q->where('locale', $this->language))
-            ->select([
-                'id',
-                'uuid',
-                'img',
-                'active',
-                'status',
-                'input',
-                'type',
-                'shop_id',
-            ])
+			->select([
+				'id',
+				'uuid',
+				'img',
+				'active',
+				'status',
+				'input',
+				'type',
+				'shop_id',
+			])
 			->orderBy($column, data_get($filter, 'sort', 'asc'))
 			->get();
 
-        return [
-            'recommended' => ProductResource::collection($recommended),
-            'all'         => CategoryResource::collection($categories)
-        ];
-    }
+		return [
+			'recommended' => ProductResource::collection($recommended),
+			'all'         => CategoryResource::collection($categories)
+		];
+	}
 
-    /**
-     * @param array $filter
-     * @return LengthAwarePaginator
-     */
-    public function categories(array $filter): LengthAwarePaginator
-    {
+	/**
+	 * @param array $filter
+	 * @return LengthAwarePaginator
+	 */
+	public function categories(array $filter): LengthAwarePaginator
+	{
 		$filter['type'] = 'main';
 
 		$locale = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
 
 		return Category::filter($filter)
 			->withSecondChildren(['lang' => $this->language])
-            ->whereHas('translation', fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)))
-            ->whereHas('products', fn($q) => $q->where('shop_id', data_get($filter, 'shop_id')))
-            ->orderBy('id')
-            ->paginate(data_get($filter, 'perPage', 10));
-    }
+			->whereHas('translation', fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)))
+			->whereHas('products', fn($q) => $q->where('shop_id', data_get($filter, 'shop_id')))
+			->orderBy('id')
+			->paginate(data_get($filter, 'perPage', 10));
+	}
 
-    /**
-     * @param array $filter
-     * @return array|Builder[]|Collection
+	/**
+	 * @param array $filter
+	 * @return array|Builder[]|Collection
 	 */
-    public function productsPaginate(array $filter): array|Collection
+	public function productsPaginate(array $filter): array|Collection
 	{
-        $shopId = data_get($filter, 'shop_id');
+		$shopId = data_get($filter, 'shop_id');
 
 		/** @var Category|null $category */
 		$category = Category::with(['children:id,parent_id'])->find(data_get($filter, 'category_id'));
@@ -1003,27 +1171,33 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 
 		$column = data_get($filter, 'column', 'id');
 
-        if (!in_array($column, ['id', 'price_asc', 'price_desc'])) {
-            $column = Schema::hasColumn('products', $column) ? $column : 'id';
-        }
+		if (!in_array($column, ['id', 'price_asc', 'price_desc'])) {
+			$column = Schema::hasColumn('products', $column) ? $column : 'id';
+		}
 
-        return Product::with([
-            'translation' => fn($q) => $q->where('locale', $this->language),
-            'stocks' => fn($q) => $q
+		return Product::with([
+			'translation' => fn($q) => $q->where('locale', $this->language),
+			'stocks' => fn($q) => $q
 				->select('id', 'countable_type', 'countable_id', 'price', 'quantity', 'addon')
-                ->with([
-                    'bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)->select([
-                        'id', 'expired_at', 'bonusable_type', 'bonusable_id',
-                        'bonus_quantity', 'value', 'type', 'status'
-                    ])
-                ])
+				->with([
+					'bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)->select([
+						'id',
+						'expired_at',
+						'bonusable_type',
+						'bonusable_id',
+						'bonus_quantity',
+						'value',
+						'type',
+						'status'
+					])
+				])
 				->where('addon', false)
 				->where('quantity', '>', 0),
-            'discounts' => fn($q) => $q
-                ->where('start', '<=', today())
-                ->where('end', '>=', today())
-                ->where('active', 1),
-        ])
+			'discounts' => fn($q) => $q
+				->where('start', '<=', today())
+				->where('end', '>=', today())
+				->where('active', 1),
+		])
 			->select([
 				'id',
 				'uuid',
@@ -1044,13 +1218,13 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 			->whereHas('stocks', fn($q) => $q->where('quantity', '>', 0))
 			->when(data_get($filter, 'brand_id'), fn($q, $brandId) => $q->where('brand_id', $brandId))
 			->when(data_get($filter, 'brand_ids.*'), fn($q) => $q->whereIn('brand_id', $filter['brand_ids']))
-            ->where([
-                ['shop_id', $shopId],
-                ['status',  Product::PUBLISHED],
-                ['active',  true],
-                ['addon',  false],
-            ])
-            ->when(is_array($categoryIds) && count($categoryIds) > 0, fn($q) => $q->whereIn('category_id', $categoryIds))
+			->where([
+				['shop_id', $shopId],
+				['status',  Product::PUBLISHED],
+				['active',  true],
+				['addon',  false],
+			])
+			->when(is_array($categoryIds) && count($categoryIds) > 0, fn($q) => $q->whereIn('category_id', $categoryIds))
 			->when(in_array($column, ['price_asc', 'price_desc']), function ($q) use ($column) {
 
 				if ($column === 'price_desc') {
@@ -1062,49 +1236,56 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 				return $q
 					->withMin('stocks', 'price')
 					->orderBy('stocks_min_price', 'asc');
-
 			}, fn($q) => $q->orderBy($column, data_get($filter, 'sort', 'desc')))
-            ->get();
-    }
+			->get();
+	}
 
-    /**
-     * @param array $filter
-     * @return Builder[]|Collection
+	/**
+	 * @param array $filter
+	 * @return Builder[]|Collection
 	 */
-    public function productsRecommendedPaginate(array $filter): array|Collection
+	public function productsRecommendedPaginate(array $filter): array|Collection
 	{
-        $shopId = data_get($filter, 'shop_id');
+		$shopId = data_get($filter, 'shop_id');
 		$recommendedCount = (int)(Settings::where('key', 'recommended_count')->first()?->value ?? 2);
 
-        return Product::with([
-            'stocks' => fn($q) => $q->select('id', 'countable_type', 'countable_id', 'price', 'quantity', 'addon')
-                ->where('quantity', '>', 0),
-            'translation' => fn($q) => $q->where('locale', $this->language),
-            'stocks.addons.addon' => fn($query) => $query->select([
-                'id',
-                'uuid',
-                'tax',
-                'status',
-                'active',
-                'img',
+		return Product::with([
+			'stocks' => fn($q) => $q->select('id', 'countable_type', 'countable_id', 'price', 'quantity', 'addon')
+				->where('quantity', '>', 0),
+			'translation' => fn($q) => $q->where('locale', $this->language),
+			'stocks.addons.addon' => fn($query) => $query->select([
+				'id',
+				'uuid',
+				'tax',
+				'status',
+				'active',
+				'img',
 				'min_qty',
 				'max_qty',
 				'interval',
-            ])->when(data_get($filter, 'addon_status'), fn($q, $status) =>
-                $q->where('active', true)->where('status', '=', $status)
-            ),
-            'stocks.addons.addon.stock',
-            'stocks.addons.addon.translation' => fn($q) => $q->where('locale', $this->language),
-            'stocks.bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)->select([
-                'id', 'expired_at', 'bonusable_type', 'bonusable_id',
-                'bonus_quantity', 'value', 'type', 'status'
-            ]),
-            'stocks.bonus.stock',
-            'stocks.bonus.stock.countable:id,uuid,tax,status,active,img,min_qty,max_qty,interval',
-            'stocks.bonus.stock.countable.translation' => fn($q) => $q->select('id', 'product_id', 'title', 'locale'),
-            'stocks.stockExtras.group.translation' => fn($q) => $q->where('locale', $this->language),
-            'discounts' => fn($q) => $q->where('start', '<=', today())->where('end', '>=', today())->where('active', 1),
-        ])
+			])->when(
+				data_get($filter, 'addon_status'),
+				fn($q, $status) =>
+				$q->where('active', true)->where('status', '=', $status)
+			),
+			'stocks.addons.addon.stock',
+			'stocks.addons.addon.translation' => fn($q) => $q->where('locale', $this->language),
+			'stocks.bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)->select([
+				'id',
+				'expired_at',
+				'bonusable_type',
+				'bonusable_id',
+				'bonus_quantity',
+				'value',
+				'type',
+				'status'
+			]),
+			'stocks.bonus.stock',
+			'stocks.bonus.stock.countable:id,uuid,tax,status,active,img,min_qty,max_qty,interval',
+			'stocks.bonus.stock.countable.translation' => fn($q) => $q->select('id', 'product_id', 'title', 'locale'),
+			'stocks.stockExtras.group.translation' => fn($q) => $q->where('locale', $this->language),
+			'discounts' => fn($q) => $q->where('start', '<=', today())->where('end', '>=', today())->where('active', 1),
+		])
 			->whereHas('stock', function ($query) use ($recommendedCount) {
 				$query
 					->where('addon', false)
@@ -1113,26 +1294,26 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 						$q->whereHas('order', fn($q) => $q->where('status', Order::STATUS_DELIVERED));
 					}, count: $recommendedCount);
 			})
-            ->select([
-                'id',
-                'uuid',
-                'category_id',
-                'img',
-                'status',
-                'active',
-                'addon',
-                'shop_id',
+			->select([
+				'id',
+				'uuid',
+				'category_id',
+				'img',
+				'status',
+				'active',
+				'addon',
+				'shop_id',
 				'min_qty',
 				'max_qty',
 				'interval',
-            ])
-            ->where([
-                ['shop_id', $shopId],
-                ['status',  Product::PUBLISHED],
-                ['active',  true],
-                ['addon',  false],
-            ])
-            ->whereHas('translation', fn($q) => $q->where('locale', $this->language))
-            ->get();
-    }
+			])
+			->where([
+				['shop_id', $shopId],
+				['status',  Product::PUBLISHED],
+				['active',  true],
+				['addon',  false],
+			])
+			->whereHas('translation', fn($q) => $q->where('locale', $this->language))
+			->get();
+	}
 }

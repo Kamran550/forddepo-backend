@@ -122,16 +122,16 @@ class Product extends Model
         'active'     => 'bool',
         'addon'      => 'bool',
         'vegetarian' => 'bool',
-		'min_qty'    => 'int',
-		'max_qty'    => 'int',
+        'min_qty'    => 'int',
+        'max_qty'    => 'int',
     ];
 
-	const PENDING       = 'pending';
-	const PUBLISHED     = 'published';
+    const PENDING       = 'pending';
+    const PUBLISHED     = 'published';
     const UNPUBLISHED   = 'unpublished';
 
     const STATUSES = [
-		self::PENDING       => self::PENDING,
+        self::PENDING       => self::PENDING,
         self::PUBLISHED     => self::PUBLISHED,
         self::UNPUBLISHED   => self::UNPUBLISHED,
     ];
@@ -158,10 +158,10 @@ class Product extends Model
         return $this->hasMany(Story::class);
     }
 
-	public function kitchen(): BelongsTo
-	{
-		return $this->belongsTo(Kitchen::class);
-	}
+    public function kitchen(): BelongsTo
+    {
+        return $this->belongsTo(Kitchen::class);
+    }
 
     // Product Category
     public function category(): BelongsTo
@@ -183,8 +183,14 @@ class Product extends Model
 
     public function orderDetails(): HasManyThrough
     {
-        return $this->hasManyThrough(OrderDetail::class, Stock::class,
-            'countable_id', 'stock_id', 'id', 'id');
+        return $this->hasManyThrough(
+            OrderDetail::class,
+            Stock::class,
+            'countable_id',
+            'stock_id',
+            'id',
+            'id'
+        );
     }
 
     public function addons(): HasMany
@@ -227,10 +233,40 @@ class Product extends Model
         return $this->morphMany(ModelLog::class, 'model');
     }
 
+    public function setOemCodeAttribute($value)
+    {
+        $this->attributes['oem_code'] = $value ? strtoupper($value) : null;
+    }
+
+
     public function inventoryItems(): HasMany
-	{
+    {
         return $this->hasMany(ProductInventoryItem::class);
     }
+
+    public function scopeVisibleForUser($query)
+    {
+        $user = auth('sanctum')->user();
+
+        \Log::info('scopeVisibleForUser ise dusdu');
+        // Guest -> retail products
+        if (!$user) {
+            \Log::info('scopeVisibleForUser ise dusdu user yoxdur');
+
+            return $query->whereHas('shop', fn($q) => $q->where('type', Shop::RETAIL));
+        }
+
+        // Wholesale customer -> only wholesale products
+        if ($user->hasRole('wholesale_customer')) {
+            \Log::info('scopeVisibleForUser ise dusdu user rol: wholesale_customer');
+
+            return $query->whereHas('shop', fn($q) => $q->where('type', Shop::WHOLESALE));
+        }
+
+        // Digər hallarda -> retail
+        return $query->whereHas('shop', fn($q) => $q->where('type', Shop::RETAIL));
+    }
+
 
     public function scopeActive($query, $active)
     {
@@ -243,32 +279,32 @@ class Product extends Model
             unset($array['addon']);
         }
 
-		$column = $array['column'] ?? 'id';
+        $column = $array['column'] ?? 'id';
 
-		if (Schema::hasColumn('products', $column)) {
-			$column = 'id';
-		}
+        if (Schema::hasColumn('products', $column)) {
+            $column = 'id';
+        }
 
-		$isRest = request()->is('api/v1/dashboard/user/*') || request()->is('api/v1/rest/*');
+        $isRest = request()->is('api/v1/dashboard/user/*') || request()->is('api/v1/rest/*');
 
         $query
-			->when(data_get($array, 'actual'), function ($query, $actual) {
+            ->when(data_get($array, 'actual'), function ($query, $actual) {
 
-				if ($actual === 'in_stock') {
-					$query->whereHas('stocks', fn($q) => $q->where('quantity', '>', 0));
-				} else if ($actual === 'low_stock') {
-					$query->whereHas('stocks', fn($q) => $q->where('quantity', '<=', 10)->where('quantity', '>', 0));
-				} else if ($actual === 'out_of_stock') {
-					$query->whereHas('stocks', fn($q) => $q->where('quantity', '<=', 0));
-				}
+                if ($actual === 'in_stock') {
+                    $query->whereHas('stocks', fn($q) => $q->where('quantity', '>', 0));
+                } else if ($actual === 'low_stock') {
+                    $query->whereHas('stocks', fn($q) => $q->where('quantity', '<=', 10)->where('quantity', '>', 0));
+                } else if ($actual === 'out_of_stock') {
+                    $query->whereHas('stocks', fn($q) => $q->where('quantity', '<=', 0));
+                }
 
-				return $query;
-			})
+                return $query;
+            })
             ->when(isset($array['price_from']), function ($q) use ($array) {
-                $q->whereHas('stocks', function ($stock) use($array) {
+                $q->whereHas('stocks', function ($stock) use ($array) {
                     $stock
-						->where('price', '>=', data_get($array, 'price_from') / $this->currency())
-                        ->where('price', '<=', data_get($array, 'price_to',10000000000) / $this->currency());
+                        ->where('price', '>=', data_get($array, 'price_from') / $this->currency())
+                        ->where('price', '<=', data_get($array, 'price_to', 10000000000) / $this->currency());
                 });
             })
             ->when(data_get($array, 'prices'), function (Builder $q, $prices) {
@@ -280,10 +316,9 @@ class Product extends Model
                     ['price', '>=', $to],
                     ['price', '<=', $to >= $from ? Stock::max('price') : $from],
                 ]));
-
             })
-			->when(data_get($array, 'slug'), fn($q, $slug) => $q->where('slug', $slug))
-			->when(isset($array['shop_id']), function ($q) use ($array) {
+            ->when(data_get($array, 'slug'), fn($q, $slug) => $q->where('slug', $slug))
+            ->when(isset($array['shop_id']), function ($q) use ($array) {
                 $q->where('shop_id', $array['shop_id']);
             })
             ->when(isset($array['category_id']), function ($q) use ($array) {
@@ -323,7 +358,7 @@ class Product extends Model
                 $q->whereIn('brand_id', $array['brand_ids']);
             })
             ->when(isset($array['column_rate']), function ($q) use ($array) {
-                $q->whereHas('reviews', function ($review) use($array) {
+                $q->whereHas('reviews', function ($review) use ($array) {
                     $review->orderBy('rating', data_get($array, 'sort', 'desc'));
                 });
             })
@@ -343,10 +378,11 @@ class Product extends Model
                 });
             })
             ->when(isset($array['active']), fn($query, $active) => $query->active($active))
-            ->when(isset($array['addon']),
-				fn($query, $addon) => $query
-					->where('addon', $array['addon'])
-					->when($isRest, fn($q) => $q->whereHas('stock', fn($q) => $q->where('quantity', '>', 0))),
+            ->when(
+                isset($array['addon']),
+                fn($query, $addon) => $query
+                    ->where('addon', $array['addon'])
+                    ->when($isRest, fn($q) => $q->whereHas('stock', fn($q) => $q->where('quantity', '>', 0))),
                 fn($query) => $query->where('addon', false)
             )
             ->when(data_get($array, 'date_from'), function (Builder $query, $dateFrom) use ($array) {
@@ -375,7 +411,7 @@ class Product extends Model
                         ->where('keywords', 'LIKE', "%$search%")
                         ->orWhere('id', 'LIKE', "%$search%")
                         ->orWhere('uuid', 'LIKE', "%$search%")
-                        ->orWhereHas('translation', function ($q) use($search) {
+                        ->orWhereHas('translation', function ($q) use ($search) {
                             $q->where('title', 'LIKE', "%$search%")->orWhere('description', 'LIKE', "%$search%");
                         });
                 });

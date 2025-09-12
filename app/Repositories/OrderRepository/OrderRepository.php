@@ -604,7 +604,7 @@ class OrderRepository extends CoreRepository implements OrderRepoInterface
 				'transactions.paymentProcess',
 				'transactions.children.paymentProcess',
 				'paymentProcesses',
-
+				'orderPayments',
 				'orderDetails.stock.countable:id,unit_id,img',
 				'orderDetails.children.stock.countable:id,unit_id',
 				'orderDetails' => fn($od) => $od->whereNull('parent_id'),
@@ -891,7 +891,7 @@ class OrderRepository extends CoreRepository implements OrderRepoInterface
 			});
 		Log::info('orders:', ['orders:', $orders]);
 
-			
+
 
 		$sumOrders = $orders->get();
 

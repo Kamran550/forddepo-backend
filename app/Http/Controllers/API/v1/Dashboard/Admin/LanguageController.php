@@ -10,6 +10,7 @@ use App\Models\Language;
 use App\Services\Interfaces\LanguageServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class LanguageController extends AdminBaseController
 {
@@ -30,6 +31,7 @@ class LanguageController extends AdminBaseController
      */
     public function index(): JsonResponse
     {
+        Log::info('langs');
         $languages = Language::get();
 
         return $this->successResponse(

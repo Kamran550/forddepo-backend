@@ -103,7 +103,10 @@ class OrderResource extends JsonResource
 			'created_at'                    => $this->when($this->created_at, $this->created_at?->format('Y-m-d H:i:s') . 'Z'),
 			'updated_at'                    => $this->when($this->updated_at, $this->updated_at?->format('Y-m-d H:i:s') . 'Z'),
 			'km'                            => $this->when($location, $location),
-
+			'paid_amount'                   => (float) $this->paid_amount,  // 🔥 accessor-dan gəlir
+			'is_partial_payment'            => $this->is_partial_payment,
+			'remaining_amount'              => (float) $this->remaining_amount,
+			'order_payments'                => OrderPaymentResource::collection($this->whenLoaded('orderPayments')),
 			'deliveryman'                   => UserResource::make($this->whenLoaded('deliveryMan')),
 			'waiter'                        => UserResource::make($this->whenLoaded('waiter')),
 			'shop'                          => ShopResource::make($this->whenLoaded('shop')),

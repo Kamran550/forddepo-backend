@@ -156,4 +156,9 @@ class Transaction extends Model
             ->when(data_get($filter, 'user_id'), fn($q, $userId) => $q->where('user_id', $userId))
             ->when(data_get($filter, 'status'), fn($q, $status) => $q->where('status', $status));
     }
+
+    public function payment()
+    {
+        return $this->hasOne(OrderPayment::class);
+    }
 }

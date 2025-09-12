@@ -42,7 +42,7 @@ class SellerRequest extends BaseRequest
             ],
             'active'                => 'boolean',
             'addon'                 => 'boolean',
-            'vegetarian'            => 'boolean',
+            // 'vegetarian'            => 'boolean',
             'interval'              => 'numeric',
             'kcal'                  => 'string|max:10',
             'carbs'                 => 'string|max:10',

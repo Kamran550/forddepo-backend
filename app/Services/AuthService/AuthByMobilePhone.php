@@ -188,7 +188,7 @@ class AuthByMobilePhone extends CoreService
         }
 
         if (!$user->hasAnyRole(Role::query()->pluck('name')->toArray())) {
-            $user->syncRoles('user');
+            $user->syncRoles('retail_customer');
         }
 
         if (empty($user->wallet?->uuid)) {

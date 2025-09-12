@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 /**
  * App\Models\Shop
@@ -162,13 +163,13 @@ class Shop extends Model
     ];
 
 
-    const RESTAURANT = "restaurant";
-    const SHOP = "shop";
+    const WHOLESALE = "wholesale";
+    const RETAIL = "retail";
 
 
     const TYPE = [
-        self::RESTAURANT => self::RESTAURANT,
-        self::SHOP => self::SHOP,
+        self::WHOLESALE => self::WHOLESALE,
+        self::RETAIL => self::RETAIL,
     ];
 
 
@@ -332,6 +333,29 @@ class Shop extends Model
     {
         return $this->morphMany(Gallery::class, 'loadable')->where('type', 'shop-documents');
     }
+
+    public function scopeVisible($query)
+    {
+        $user = auth('sanctum')->user();
+        \Log::info('scopeVisible: user', ['us:', $user]);
+
+        // Əgər login olmayıbsa -> retail göstər
+        if (!$user) {
+            \Log::info('scopeVisible: guest');
+            return $query->where('type', self::RETAIL);
+        }
+
+        // Əgər login olub və rolu wholesale_customer-dirsə
+        if ($user->hasRole('wholesale_customer')) {
+            Log::info('whosale');
+            return $query->where('type', self::WHOLESALE);
+        }
+
+        Log::info('diger hallar');
+        // Digər bütün hallarda (məs: retail_customer) -> retail
+        return $query->where('type', self::RETAIL);
+    }
+
 
     public function scopeFilter($query, $filter)
     {

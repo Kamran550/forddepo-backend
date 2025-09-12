@@ -21,6 +21,10 @@ class AdminRequest extends BaseRequest
                 Rule::exists('shops', 'id')->whereNull('deleted_at')
             ],
             'status' => Rule::in(Product::STATUSES),
+            'oem_code' => [
+                'required',
+                Rule::unique('products', 'oem_code')->ignore($this->route('uuid'), 'uuid'),
+            ],
         ] + (new SellerRequest)->rules();
     }
 }

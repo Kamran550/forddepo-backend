@@ -15,6 +15,8 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Request as FacadesRequest;
 
 class GalleryController extends Controller
 {
@@ -101,8 +103,9 @@ class GalleryController extends Controller
      * @param GalleryUploadRequest $request
      * @return JsonResponse
      */
-    public function store(GalleryUploadRequest $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
+        Log::info('store req gallery');
         if (!$request->file('image')) {
             return $this->onErrorResponse([
                 'code'    => ResponseError::ERROR_404,
@@ -112,6 +115,7 @@ class GalleryController extends Controller
 
         $result = FileHelper::uploadFile($request->file('image'), $request->input('type', 'unknown'));
 
+        Log::info("res:", ['gallery res:', $result]);
         if (!data_get($result, 'status')) {
             return $this->onErrorResponse($result);
         }
@@ -121,49 +125,50 @@ class GalleryController extends Controller
             'type'  => $request->input('type')
         ];
 
+        LOg::info('sondaki data:', ['da:', $data]);
+
         return $this->successResponse(
             __('errors.' . ResponseError::IMAGE_SUCCESSFULLY_UPLOADED, $data, $this->language),
             $data
         );
-
     }
 
-	/**
-	 * Store multiple newly created resources in storage
-	 *
-	 * @param GalleryMultiUploadRequest $request
-	 * @return JsonResponse
-	 */
-	public function storeMany(GalleryMultiUploadRequest $request): JsonResponse
-	{
-		if (!$request->file('images')) {
-			return $this->onErrorResponse(['code' => ResponseError::ERROR_404]);
-		}
+    /**
+     * Store multiple newly created resources in storage
+     *
+     * @param GalleryMultiUploadRequest $request
+     * @return JsonResponse
+     */
+    public function storeMany(GalleryMultiUploadRequest $request): JsonResponse
+    {
+        if (!$request->file('images')) {
+            return $this->onErrorResponse(['code' => ResponseError::ERROR_404]);
+        }
 
-		$images = $request->file(['images']);
-		$result = [];
+        $images = $request->file(['images']);
+        $result = [];
 
-		foreach ($images as $image) {
-			$result[] = FileHelper::uploadFile($image, $request->input('type', 'other'));
-		}
+        foreach ($images as $image) {
+            $result[] = FileHelper::uploadFile($image, $request->input('type', 'other'));
+        }
 
-		$titles = [];
+        $titles = [];
 
-		foreach ($result as $item) {
+        foreach ($result as $item) {
 
-			if (!data_get($item, 'status')) {
-				return $this->onErrorResponse($item);
-			}
+            if (!data_get($item, 'status')) {
+                return $this->onErrorResponse($item);
+            }
 
-			$titles[] = data_get($item, 'data');
-		}
+            $titles[] = data_get($item, 'data');
+        }
 
-		return $this->successResponse(
-			__('errors.' . ResponseError::NO_ERROR, locale: $this->language),
-			[
-				'title' => $titles,
-				'type'  => $request->input('type')
-			]
-		);
-	}
+        return $this->successResponse(
+            __('errors.' . ResponseError::NO_ERROR, locale: $this->language),
+            [
+                'title' => $titles,
+                'type'  => $request->input('type')
+            ]
+        );
+    }
 }

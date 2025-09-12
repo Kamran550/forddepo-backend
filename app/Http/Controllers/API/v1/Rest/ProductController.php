@@ -256,7 +256,7 @@ class ProductController extends RestBaseController
      */
     public function productsSearch(FilterParamsRequest $request): AnonymousResourceCollection
     {
-        $products = $this->productRepository->productsSearch(
+        $products = $this->productRepository->productsSearchWeb(
             $request->merge(['status' => Product::PUBLISHED, 'active' => 1])->all(),
         );
 

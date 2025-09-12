@@ -49,12 +49,6 @@ class ShopController extends RestBaseController
     public function paginate(FilterParamsRequest $request): AnonymousResourceCollection
     {
         Log::info('paginate filter', ['req:', $request->all()]);
-        // [2025-06-21 12:55:06] local1.INFO: paginate filter ["req:",{"type":"shop","verify":"1","address":{"latitude":"40.68177486758787","longitude":"46.35567797594624"},"lang":"en"}] 
-
-        // [2025-06-21 12:55:11] local1.INFO: paginate filter ["req:",{"type":"shop","perPage":"12","address":{"latitude":"40.68177486758787","longitude":"46.35567797594624"},"open":"1","lang":"en"}] 
-
-
-        // [2025-06-21 12:55:12] local1.INFO: paginate filter ["req:",{"type":"restaurant","page":"1","perPage":"12","address":{"latitude":"40.68177486758787","longitude":"46.35567797594624"},"lang":"en"}] 
 
         $visibility = (int)Settings::where('key', 'by_subscription')->first()?->value;
 
@@ -67,9 +61,12 @@ class ShopController extends RestBaseController
             $merge += ['visibility' => true];
         }
 
-        $shops = $this->shopRepository->shopsPaginate(
+        $shops = $this->shopRepository->shopsPaginateWeb(
             $request->merge($merge)->all()
         );
+
+        Log::info('shops:', ['shops:', $shops]);
+
 
 
         $menimShopum = ShopResource::collection($shops);

@@ -58,13 +58,19 @@ class ShopController extends AdminBaseController
      * @param FilterParamsRequest $request
      * @return AnonymousResourceCollection
      */
-    public function paginate(FilterParamsRequest $request): AnonymousResourceCollection
+    public function paginate(Request $request): AnonymousResourceCollection
     {
+        Log::info('paginate shop');
         $shops = $this->repository->shopsPaginate($request->all());
-
+        Log::info('shops:', ['shops:', $shops]);
         if (!Cache::get('tvoirifgjn.seirvjrc') || data_get(Cache::get('tvoirifgjn.seirvjrc'), 'active') != 1) {
+            LOg::info('cache olan ife dusur');
             abort(403);
         }
+
+        Log::info('ife girmedi');
+        $myShops = ShopResource::collection($shops);
+        Log::info('myShops:', ['myShops:', $myShops]);
 
         return ShopResource::collection($shops);
     }
@@ -161,7 +167,7 @@ class ShopController extends AdminBaseController
             return $this->onErrorResponse(['code' => ResponseError::ERROR_207]);
         }
 
-        
+
         $result = $this->service->update($uuid, $request->all());
 
         if (!data_get($result, 'status')) {

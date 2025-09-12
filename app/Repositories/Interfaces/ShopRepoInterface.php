@@ -8,6 +8,8 @@ interface ShopRepoInterface
 
     public function shopsPaginate(array $filter);
 
+    public function shopsPaginateWeb(array $filter);
+
     public function selectPaginate(array $filter);
 
     public function shopDetails(string $uuid);
@@ -22,7 +24,7 @@ interface ShopRepoInterface
 
     public function recommended(array $filter);
 
-	public function productsRecPaginate(array $filter);
+    public function productsRecPaginate(array $filter);
 
     public function products(array $filter);
 
@@ -33,5 +35,4 @@ interface ShopRepoInterface
     public function productsPaginate(array $filter);
 
     public function productsRecommendedPaginate(array $filter);
-
 }

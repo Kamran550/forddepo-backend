@@ -29,8 +29,8 @@ class StoreRequest extends BaseRequest
                 Rule::exists('payments', 'id')->whereNull('deleted_at')
             ],
             'table_id'              => [
-				Rule::exists('tables', 'id')->whereNull('deleted_at')
-			],
+                Rule::exists('tables', 'id')->whereNull('deleted_at')
+            ],
             'booking_id'            => 'integer',
             'user_booking_id'       => 'integer',
             'currency_id'           => 'required|integer|exists:currencies,id',
@@ -61,31 +61,34 @@ class StoreRequest extends BaseRequest
             'notes.*'               => 'string|max:255',
             'images'                => 'array',
             'images.*'              => 'string',
-			'bonus'                 => 'boolean',
-			'tip_type'              => 'in:fix,percent',
-			'tips'                  => 'numeric|min:0',
-			'delivery_point_id'     => [
-				request('delivery_type') === Order::POINT ? 'required' : 'nullable',
-				'integer',
-				Rule::exists('delivery_points', 'id')
-			],
-			'products'              => 'nullable|array',
+            'bonus'                 => 'boolean',
+            'tip_type'              => 'in:fix,percent',
+            'tips'                  => 'numeric|min:0',
+            'partial_payment' => 'nullable|array',
+            'partial_payment.is_partial' => 'boolean',
+            'partial_payment.paid_amount' => 'numeric|min:0',
+            'delivery_point_id'     => [
+                request('delivery_type') === Order::POINT ? 'required' : 'nullable',
+                'integer',
+                Rule::exists('delivery_points', 'id')
+            ],
+            'products'              => 'nullable|array',
             'products.*.stock_id'   =>  [
                 'integer',
                 Rule::exists('stocks', 'id')
-					->whereNull('deleted_at')
+                    ->whereNull('deleted_at')
             ],
             'products.*.quantity'   => 'numeric',
             'products.*.note'       => 'nullable|string|max:255',
 
-			'products.*.addons'     => 'array',
-			'products.*.addons.*.stock_id'  => [
-				'integer',
-				Rule::exists('stocks', 'id')
-					->where('addon', 1)
-					->whereNull('deleted_at')
-			],
-			'products.*.addons.*.quantity'  => ['integer'],
+            'products.*.addons'     => 'array',
+            'products.*.addons.*.stock_id'  => [
+                'integer',
+                Rule::exists('stocks', 'id')
+                    ->where('addon', 1)
+                    ->whereNull('deleted_at')
+            ],
+            'products.*.addons.*.quantity'  => ['integer'],
         ];
     }
 }

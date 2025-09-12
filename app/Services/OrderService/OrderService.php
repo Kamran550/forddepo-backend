@@ -187,6 +187,28 @@ class OrderService extends CoreService implements OrderServiceInterface
 
 
 				$this->calculateOrder($order, $shop, $data);
+				$order->refresh();
+
+
+				if (isset($data['partial_payment']['is_partial']) && $data['partial_payment']['is_partial'] === true) {
+					Log::info('partial_payment check if');
+					$paidAmount = (float) data_get($data, 'partial_payment.paid_amount', 0);
+					if ($paidAmount > 0) {
+						// orderPayments cədvəlini əlavə et
+						$order->addPayment(
+							amount: $paidAmount,
+							transactionId: null,
+							paymentMethod: $data['partial_payment']['payment_method'] ?? 'cash',
+							note: $data['partial_payment']['note'] ?? 'User partial payment'
+						);
+
+						// indi orders cədvəlində paid_amount-u yenilə
+						$order->update([
+							'paid_amount' => $order->orderPayments()->sum('amount')
+						]);
+					}
+				}
+
 
 				if (data_get($data, 'payment_id') && !data_get($data, 'split')) {
 					LOg::info('data da payment_id var ve split yoxdur');
@@ -469,6 +491,7 @@ class OrderService extends CoreService implements OrderServiceInterface
 		Log::info('son total price calculate order3:', ['total price:', $totalPrice]);
 
 
+
 		$order->update([
 			'total_price'    => $totalPrice,
 			'delivery_fee'   => $deliveryFee,
@@ -483,6 +506,12 @@ class OrderService extends CoreService implements OrderServiceInterface
 			'info'           => $info,
 			'waiter_id'		 => $waiterId,
 		]);
+
+		Log::info('updateden oldu orderdeki total price:', ['order:', $totalPrice]);
+
+
+		Log::info('updateden oldu order:', ['order:', $order]);
+
 
 		$isSubscribe = (int)Settings::where('key', 'by_subscription')->first()?->value;
 
@@ -1001,20 +1030,6 @@ class OrderService extends CoreService implements OrderServiceInterface
 
 
 		$price = data_get($cart, 'total_price');
-		// if ($price < $shop->min_amount) {
-		// 	Log::info('Order servicede service fee logicine girdi');
-
-		// 	$smallOrderFee = min(
-		// 		$shop->min_amount - $price,
-		// 		$shop->max_small_order_fee
-		// 	);
-		// 	Log::info('smallOrderFee:', ['smallOrderFee:', $smallOrderFee]);
-		// 	Log::info('sifariş məbləği:', ['sifariş məbləği:', $cart]);
-
-		// 	$info[] = ['service_info' => "Minimum sifariş məbləği {$cart->shop->min_amount} AZN-dir. Sifarişiniz bu məbləğə çatmadığı üçün {$smallOrderFee} AZN əlavə xidmət haqqı tətbiq olundu."];
-		// 	$serviceFee += $smallOrderFee;
-		// }
-
 
 		Log::info('son service fee:', ['service fee:', $serviceFee]);
 
@@ -1026,7 +1041,8 @@ class OrderService extends CoreService implements OrderServiceInterface
 		Log::info('sonda info arrayi:', ['info array:', $info]);
 
 		Log::info('setOrderParams deliveryFee:', ['setOrderParams deliveryFee:', $deliveryFee]);
-		return [
+
+		$createParams =  [
 			'user_id'           => $data['user_id'] ?? auth('sanctum')->id(),
 			'waiter_id'         => data_get($data, 'waiter_id'),
 			'table_id'          => data_get($data, 'table_id'),
@@ -1043,7 +1059,8 @@ class OrderService extends CoreService implements OrderServiceInterface
 			'tax'               => 0,
 			'commission_fee'    => 0,
 			'service_fee'       => $serviceFee,
-			'status'            => ($shop?->type === Shop::SHOP) ? Order::STATUS_READY : data_get($data, 'status', Order::STATUS_NEW),
+			// 'status'            => ($shop?->type === Shop::SHOP) ? Order::STATUS_READY : data_get($data, 'status', Order::STATUS_NEW),
+			'status'            => data_get($data, 'status', Order::STATUS_NEW),
 			'delivery_fee'      => max($deliveryFee, 0),
 			'waiter_fee'        => max($waiterFee, 0),
 			'delivery_type'     => data_get($data, 'delivery_type'),
@@ -1053,10 +1070,15 @@ class OrderService extends CoreService implements OrderServiceInterface
 			'deliveryman'       => data_get($data, 'deliveryman'),
 			'delivery_date'     => data_get($data, 'delivery_date'),
 			'delivery_time'     => data_get($data, 'delivery_time'),
-			'admin_delivery_fee' => max($adminDeliveryFee, 0),
+			// 'admin_delivery_fee' => max($adminDeliveryFee, 0),
 			'total_discount'    => 0,
 			'info'              => $info,
 		];
+
+
+
+
+		return $createParams;
 	}
 
 
@@ -1067,6 +1089,8 @@ class OrderService extends CoreService implements OrderServiceInterface
 	 */
 	private function setOrderParams2(Order $order, array $data, Shop $shop): array
 	{
+
+
 
 		Log::info('setOrderParams 2-e girdi', ['data:', $data]);
 		$defaultCurrencyId = Currency::whereDefault(1)->first('id');
@@ -1133,7 +1157,7 @@ class OrderService extends CoreService implements OrderServiceInterface
 			$otp = 1234;
 		}
 
-		return [
+		$updateParams = [
 			'user_id'           => $data['user_id'] ?? auth('sanctum')->id(),
 			'waiter_id'         => data_get($data, 'waiter_id'),
 			'table_id'          => data_get($data, 'table_id'),
@@ -1150,7 +1174,7 @@ class OrderService extends CoreService implements OrderServiceInterface
 			'tax'               => 0,
 			'commission_fee'    => 0,
 			'service_fee'       => $serviceFee,
-			'status'            => ($shop?->type === Shop::SHOP) ? Order::STATUS_READY : data_get($data, 'status', Order::STATUS_NEW),
+			'status'            => data_get($data, 'status', Order::STATUS_NEW),
 			'waiter_fee'        => max($waiterFee, 0),
 			'delivery_type'     => data_get($data, 'delivery_type'),
 			'location'          => data_get($data, 'location'),
@@ -1162,6 +1186,13 @@ class OrderService extends CoreService implements OrderServiceInterface
 			// 'admin_delivery_fee' => max($adminDeliveryFee, 0),
 			'total_discount'    => 0,
 		];
+
+
+		if (isset($data['partial_payment']['is_partial']) && $data['partial_payment']['is_partial'] === true) {
+			$params['is_partial_payment']   = true;
+			// $params['paid_amount']  = data_get($data, 'partial_payment.paid_amount', 0);
+		}
+		return $updateParams;
 	}
 
 

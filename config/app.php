@@ -66,7 +66,6 @@ return [
 
     'front_url' => env('FRONT_URL'),
     'admin_url' => env('ADMIN_URL'),
-    'qr_url'     => env('QR_URL'),
 
     'telegram_bot_token' => env('TELEGRAM_BOT_TOKEN'),
 

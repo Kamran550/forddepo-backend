@@ -40,30 +40,30 @@ class ProductService extends CoreService implements ProductServiceInterface
                 }
 
                 if (data_get($data, 'addon') && data_get($data, 'addons.*')) {
-					throw new Exception(__('errors.' . ResponseError::ATTACH_FOR_ADDON, locale: $this->language));
+                    throw new Exception(__('errors.' . ResponseError::ATTACH_FOR_ADDON, locale: $this->language));
                 }
 
                 if (data_get($data, 'min_qty') > 1000000) {
-                    data_set($data, 'min_qty',1000000);
+                    data_set($data, 'min_qty', 1000000);
                 }
 
                 if (data_get($data, 'max_qty') > 1000000) {
-                    data_set($data, 'max_qty',1000000);
+                    data_set($data, 'max_qty', 1000000);
                 }
 
-				$autoApprove = Settings::where('key', 'product_auto_approve')->first()?->value;
+                $autoApprove = Settings::where('key', 'product_auto_approve')->first()?->value;
 
-				if ($autoApprove) {
-					$data['status'] = Product::PUBLISHED;
-					$data['active'] = true;
-				}
+                if ($autoApprove) {
+                    $data['status'] = Product::PUBLISHED;
+                    $data['active'] = true;
+                }
 
                 $product = $this->model()->create($data);
 
                 $this->setTranslations($product, $data);
 
-				/** @var Product $product */
-				if (data_get($data, 'meta')) {
+                /** @var Product $product */
+                if (data_get($data, 'meta')) {
                     $product->setMetaTags($data);
                 }
 
@@ -73,9 +73,9 @@ class ProductService extends CoreService implements ProductServiceInterface
                 }
 
                 if (data_get($data, 'inventory_items.0')) {
-					foreach ($data['inventory_items'] as $inventoryItem) {
-						$product->inventoryItems()->create($inventoryItem);
-					}
+                    foreach ($data['inventory_items'] as $inventoryItem) {
+                        $product->inventoryItems()->create($inventoryItem);
+                    }
                 }
 
                 return $product;
@@ -105,6 +105,7 @@ class ProductService extends CoreService implements ProductServiceInterface
     {
         try {
 
+            \Log::info("prod data update:", ['up prod data:', $data]);
             if (
                 !empty(data_get($data, 'category_id')) &&
                 $this->checkIsParentCategory((int)data_get($data, 'category_id'))
@@ -135,7 +136,8 @@ class ProductService extends CoreService implements ProductServiceInterface
                 ];
             }
 
-            if (data_get($data, 'min_qty') &&
+            if (
+                data_get($data, 'min_qty') &&
                 data_get($data, 'max_qty') &&
                 data_get($data, 'min_qty') > data_get($data, 'max_qty')
             ) {
@@ -147,14 +149,14 @@ class ProductService extends CoreService implements ProductServiceInterface
             }
 
             if (data_get($data, 'min_qty') > 1000000) {
-                data_set($data, 'min_qty',1000000);
+                data_set($data, 'min_qty', 1000000);
             }
 
             if (data_get($data, 'max_qty') > 1000000) {
-                data_set($data, 'max_qty',1000000);
+                data_set($data, 'max_qty', 1000000);
             }
 
-			$data['status_note'] = null;
+            $data['status_note'] = null;
 
             $product->update($data);
 
@@ -166,16 +168,16 @@ class ProductService extends CoreService implements ProductServiceInterface
 
             if (data_get($data, 'images.0')) {
                 $product->galleries()->delete();
-                $product->update([ 'img' => data_get($data, 'images.0') ]);
+                $product->update(['img' => data_get($data, 'images.0')]);
                 $product->uploads(data_get($data, 'images'));
             }
 
-			if (data_get($data, 'inventory_items.0')) {
-				$product->inventoryItems()->delete();
-				foreach ($data['inventory_items'] as $inventoryItem) {
-					$product->inventoryItems()->create($inventoryItem);
-				}
-			}
+            if (data_get($data, 'inventory_items.0')) {
+                $product->inventoryItems()->delete();
+                foreach ($data['inventory_items'] as $inventoryItem) {
+                    $product->inventoryItems()->create($inventoryItem);
+                }
+            }
 
             return [
                 'status' => true,
@@ -231,14 +233,15 @@ class ProductService extends CoreService implements ProductServiceInterface
         ];
     }
 
-	public function multipleKitchenUpdate(array $filter) {
-		DB::table('products')
-			->when(isset($filter['shop_id']), fn($q) => $q->where('shop_id', $filter['shop_id']))
-			->whereIn('category_id', (array)$filter['category_ids'])
-			->update([
-				'kitchen_id' => $filter['kitchen_id']
-			]);
-	}
+    public function multipleKitchenUpdate(array $filter)
+    {
+        DB::table('products')
+            ->when(isset($filter['shop_id']), fn($q) => $q->where('shop_id', $filter['shop_id']))
+            ->whereIn('category_id', (array)$filter['category_ids'])
+            ->update([
+                'kitchen_id' => $filter['kitchen_id']
+            ]);
+    }
 
     /**
      * @param Stock $stock
@@ -266,7 +269,7 @@ class ProductService extends CoreService implements ProductServiceInterface
                 $product = Product::with('stock')->where('id', $id)->first();
 
                 if (
-					!$product->stock->addon ||
+                    !$product->stock->addon ||
                     $product->shop_id !== $stock->countable?->shop_id ||
                     $product->stock?->bonus
                 ) {
@@ -277,9 +280,7 @@ class ProductService extends CoreService implements ProductServiceInterface
                 $stock->addons()->create([
                     'addon_id' => $id
                 ]);
-
             }
-
         } catch (Throwable $e) {
 
             $this->error($e);

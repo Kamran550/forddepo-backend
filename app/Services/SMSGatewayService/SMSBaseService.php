@@ -28,7 +28,16 @@ class SMSBaseService extends CoreService
     public function smsGateway($phone): array
     {
         $otp = $this->setOTP();
+        $this->setOTPToCache($phone, $otp);
+
         Log::info('ooottp:', ['otp:', $otp]);
+        $result = ['status' => true, 'message' => 'sms is not configured!'];
+        return [
+            'status' => true,
+            'verifyId' => data_get($otp, 'verifyId'),
+            'phone' => Str::mask($phone, '*', -12, 8),
+            'message' => data_get($result, 'message', ''),
+        ];
 
         $smsPayload = SmsPayload::where('type', SmsPayload::SMILESMS)->first();
 

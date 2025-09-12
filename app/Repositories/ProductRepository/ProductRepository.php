@@ -19,6 +19,7 @@ use App\Repositories\ReportRepository\ChartRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Jenssegers\Agent\Agent;
@@ -58,39 +59,39 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                 'stocks.bonus.stock.stockExtras',
                 'stocks.bonus.stock.countable:id,uuid,tax,status,shop_id,active,img,min_qty,max_qty,interval',
                 'stocks.bonus.stock.countable.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
                     ->select('id', 'product_id', 'title', 'locale'),
                 'stocks.stockExtras.group.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
             ];
         }
 
         return $product
             ->filter($filter)
             ->with(array_merge($stocks, [
-				'discounts' => fn($q) => $q->where('start', '<=', today())->where('end', '>=', today())->where('active', 1),
-				'translation' => fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
-				'shop' => fn($q) => $q
-					->select('id', 'status')
-					->when(data_get($filter, 'shop_status'), function ($q, $status) {
-						$q->where('status', '=', $status);
-					}),
-				'shop.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
-					->select('id', 'locale', 'title', 'shop_id'),
-				'unit.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
-					->select('id', 'locale', 'title', 'unit_id'),
-				'reviews',
-				'translations',
-				'category' => fn($q) => $q->select('id', 'uuid'),
-				'category.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
-					->select('id', 'category_id', 'locale', 'title'),
-				'kitchen.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)
-						->orWhere('locale', $locale))
-			]))
+                'discounts' => fn($q) => $q->where('start', '<=', today())->where('end', '>=', today())->where('active', 1),
+                'translation' => fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+                'shop' => fn($q) => $q
+                    ->select('id', 'status')
+                    ->when(data_get($filter, 'shop_status'), function ($q, $status) {
+                        $q->where('status', '=', $status);
+                    }),
+                'shop.translation' => fn($q) => $q
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
+                    ->select('id', 'locale', 'title', 'shop_id'),
+                'unit.translation' => fn($q) => $q
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
+                    ->select('id', 'locale', 'title', 'unit_id'),
+                'reviews',
+                'translations',
+                'category' => fn($q) => $q->select('id', 'uuid'),
+                'category.translation' => fn($q) => $q
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
+                    ->select('id', 'category_id', 'locale', 'title'),
+                'kitchen.translation' => fn($q) => $q
+                    ->where(fn($q) => $q->where('locale', $this->language)
+                        ->orWhere('locale', $locale))
+            ]))
             ->when(data_get($filter, 'rest'), function ($q) use ($locale) {
                 $q->whereHas('translation', fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)));
             })
@@ -108,9 +109,9 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
             ->with([
                 'translation' => fn($q) => $q
                     ->select(['id', 'locale', 'title', 'product_id'])
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
                 'unit.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
                     ->select('id', 'locale', 'title', 'unit_id'),
             ])
             ->select([
@@ -122,9 +123,11 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                 'vegetarian',
             ])
             ->whereHas('stocks', fn($q) => $q->where('quantity', '>', 0))
-            ->whereHas('translation', fn($q) => $q
-                ->select(['id', 'locale', 'title', 'product_id'])
-                ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
+            ->whereHas(
+                'translation',
+                fn($q) => $q
+                    ->select(['id', 'locale', 'title', 'product_id'])
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
             )
             ->paginate(data_get($filter, 'perPage', 10));
     }
@@ -140,28 +143,28 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                 'stocks.addons',
                 'stocks.addons.addon.stock',
                 'stocks.addons.addon.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
                 'galleries' => fn($q) => $q->select('id', 'type', 'loadable_id', 'path', 'title'),
                 'stocks.stockExtras.group.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
                 'discounts' => fn($q) => $q
                     ->where('start', '<=', today())
                     ->where('end', '>=', today())
                     ->where('active', 1),
                 'translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
                     ->select('id', 'product_id', 'locale', 'title'),
                 'category.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
                     ->select('id', 'category_id', 'locale', 'title'),
                 'brand' => fn($q) => $q->select('id', 'uuid', 'title'),
                 'unit.translation' => fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
                 'extras.translation' => fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
                 'tags.translation' => fn($q) => $q->select('id', 'category_id', 'locale', 'title')
-					->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
-				'kitchen.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)
-						->orWhere('locale', $locale))
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+                'kitchen.translation' => fn($q) => $q
+                    ->where(fn($q) => $q->where('locale', $this->language)
+                        ->orWhere('locale', $locale))
             ])
             ->find($id);
     }
@@ -171,7 +174,7 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
         /** @var Product $product */
         $product = $this->model();
         $locale  = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
-		$isRest  = request()->is('api/v1/dashboard/user/*') || request()->is('api/v1/rest/*');
+        $isRest  = request()->is('api/v1/dashboard/user/*') || request()->is('api/v1/rest/*');
 
         return $product
             ->withAvg('reviews', 'rating')
@@ -180,18 +183,18 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                 'galleries' => fn($q) => $q->select('id', 'type', 'loadable_id', 'path', 'title'),
                 'properties',
                 'stocks.stockExtras.group.translation' => fn($q) => $q
-					->where('locale', $this->language)
+                    ->where('locale', $this->language)
                     ->orWhere('locale', $locale),
                 'stocks.addons.addon' => fn($q) => $q
-					->when($isRest, function ($query) {
-						$query->where('active', true)->where('addon', true)->where('status', Product::PUBLISHED);
-					}),
+                    ->when($isRest, function ($query) {
+                        $query->where('active', true)->where('addon', true)->where('status', Product::PUBLISHED);
+                    }),
                 'stocks.addons.addon.stock',
                 'stocks.addons.addon.translation' => fn($q) => $q->where('locale', $this->language)
                     ->orWhere('locale', $locale),
                 'discounts' => fn($q) => $q
-					->where('start', '<=', today())
-					->where('end', '>=', today())
+                    ->where('start', '<=', today())
+                    ->where('end', '>=', today())
                     ->where('active', 1),
                 'shop.translation' => fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
                 'category' => fn($q) => $q->select('id', 'uuid'),
@@ -205,9 +208,9 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                 'translation' => fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
                 'tags.translation' => fn($q) => $q->select('id', 'category_id', 'locale', 'title')
                     ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
-				'kitchen.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)
-						->orWhere('locale', $locale))
+                'kitchen.translation' => fn($q) => $q
+                    ->where(fn($q) => $q->where('locale', $this->language)
+                        ->orWhere('locale', $locale))
             ])
             ->firstWhere('uuid', $uuid);
     }
@@ -234,9 +237,9 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                     ->select('id', 'product_id', 'locale', 'title'),
                 'tags.translation' => fn($q) => $q->select('id', 'category_id', 'locale', 'title')
                     ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
-				'kitchen.translation' => fn($q) => $q
-					->where(fn($q) => $q->where('locale', $this->language)
-						->orWhere('locale', $locale))
+                'kitchen.translation' => fn($q) => $q
+                    ->where(fn($q) => $q->where('locale', $this->language)
+                        ->orWhere('locale', $locale))
             ])
             ->whereHas('shop', function ($item) {
                 $item->whereNull('deleted_at');
@@ -250,6 +253,7 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
      */
     public function productsSearch(array $filter = []): mixed
     {
+        // shop
         $locale  = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
 
         return $this->model()
@@ -273,7 +277,7 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                     ->orWhere('locale', $locale),
                 'shop:id,status,uuid,user_id,logo_img,background_img',
             ])
-            ->whereHas('shop', fn ($query) => $query->filter(['open' => 1, 'status' => 'approved', 'address' => data_get($filter, 'address', [])]))
+            ->whereHas('shop', fn($query) => $query->filter(['open' => 1, 'status' => 'approved', 'address' => data_get($filter, 'address', [])]))
             ->whereHas('stocks', fn($q) => $q->where('quantity', '>', 0))
             ->latest()
             ->select([
@@ -287,6 +291,85 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
             ->paginate(data_get($filter, 'perPage', 10));
     }
 
+
+
+    public function productsSearchWeb(array $filter = []): mixed
+    {
+        Log::info('search filter beledir prod:', ['filt:', $filter]);
+
+        // shop
+        $locale  = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
+
+        $query =  $this->model()
+            ->visibleForUser()
+            ->filter($filter)
+            ->with([
+                'stocks' => fn($q) => $q->select([
+                    'id',
+                    'countable_type',
+                    'countable_id',
+                    'price',
+                    'quantity',
+                ]),
+                'stocks.stockExtras.group.translation' => fn($q) => $q
+                    ->where('locale', $this->language)
+                    ->orWhere('locale', $locale),
+                'translation' => fn($q) => $q
+                    ->where('locale', $this->language)
+                    ->orWhere('locale', $locale),
+                'unit.translation' => fn($q) => $q
+                    ->where('locale', $this->language)
+                    ->orWhere('locale', $locale),
+                'shop:id,status,uuid,user_id,logo_img,background_img',
+            ])
+            ->whereHas('shop', function ($query) use ($filter) {
+                $query->visible()
+                    ->filter([
+                        'open' => 1,
+                        'status' => 'approved',
+                        'address' => data_get($filter, 'address', [])
+                    ]);
+            })
+            ->whereHas('stocks', fn($q) => $q->where('quantity', '>', 0));
+
+        if (!empty($filter['search'])) {
+            $searchTerm = $filter['search'];
+            $query->orWhere('oem_code', $searchTerm);
+        }
+        // if (!empty($filter['search'])) {
+        //     $searchTerm = $filter['search'];
+        //     Log::info('oem codeye gore axtaris', ['searchTerm:', $searchTerm]);
+
+        //     $query->where(function ($q) use ($searchTerm) {
+        //         // OEM code yalnız allowed shop-larda axtarılır
+        //         $q->whereHas('shop', fn($shopQ) => $shopQ->visible())
+        //             ->where('oem_code', $searchTerm);
+
+        //         // Product title də axtar (optional)
+        //         $q->orWhereHas(
+        //             'translation',
+        //             fn($tQ) =>
+        //             $tQ->where('title', 'like', "%$searchTerm%")
+        //                 ->whereHas('product.shop', fn($shopQ) => $shopQ->visible()) // title filter də shop ilə məhdudlaşdır
+        //         );
+        //     });
+        // }
+
+
+        return $query
+            ->latest()
+            ->select([
+                'id',
+                'img',
+                'shop_id',
+                'uuid',
+                'status',
+                'active',
+                'oem_code',
+
+            ])
+            ->paginate(data_get($filter, 'perPage', 10));
+    }
     /**
      * @param array $data
      * @return LengthAwarePaginator
@@ -297,31 +380,34 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
 
         return Stock::with([
             'stockExtras.group.translation' => fn($q) => $q
-               ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
+                ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
             'countable' => fn($q) => $q->select(['id', 'shop_id']),
             'countable.translation' => fn($q) => $q->select('id', 'product_id', 'locale', 'title')
                 ->orWhere('locale', $locale)
                 ->where('locale', $this->language),
         ])
-            ->when(isset($data['addon']), fn($query) => $query->whereAddon($data['addon']),
+            ->when(
+                isset($data['addon']),
+                fn($query) => $query->whereAddon($data['addon']),
                 fn($query) => $query->whereAddon(0)
             )
-            ->whereHas('countable', fn($q) => $q
-				->whereHas('translation', fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)))
-				->where('shop_id', data_get($data, 'shop_id') )
-                ->when(isset($data['active']), fn($q) => $q->where('active', $data['active']))
-                ->when(data_get($data, 'status'), fn($q, $status) => $q->where('status', $status))
-                ->when(data_get($data, 'search'), function ($q, $s) {
+            ->whereHas(
+                'countable',
+                fn($q) => $q
+                    ->whereHas('translation', fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)))
+                    ->where('shop_id', data_get($data, 'shop_id'))
+                    ->when(isset($data['active']), fn($q) => $q->where('active', $data['active']))
+                    ->when(data_get($data, 'status'), fn($q, $status) => $q->where('status', $status))
+                    ->when(data_get($data, 'search'), function ($q, $s) {
 
-                    $q->where(function ($query) use ($s) {
-                        $query->where('keywords', 'LIKE', "%$s%")
-                            ->orWhereHas('translation', function ($q) use ($s) {
-                                $q->where('title', 'LIKE', "%$s%")
-                                    ->select('id', 'product_id', 'locale', 'title');
-                            });
-                    });
-
-                })
+                        $q->where(function ($query) use ($s) {
+                            $query->where('keywords', 'LIKE', "%$s%")
+                                ->orWhereHas('translation', function ($q) use ($s) {
+                                    $q->where('title', 'LIKE', "%$s%")
+                                        ->select('id', 'product_id', 'locale', 'title');
+                                });
+                        });
+                    })
             )
             ->where('quantity', '>', 0)
             ->paginate(data_get($data, 'perPage', 10));
@@ -339,9 +425,9 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
         $chart      = data_get($filter, 'chart');
 
         $orders = Order::filter($filter)
-			->where('status', Order::STATUS_DELIVERED)
-			->whereDate('created_at', '>=', $dateFrom)
-			->whereDate('created_at', '<=', $dateTo)
+            ->where('status', Order::STATUS_DELIVERED)
+            ->whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
             ->select([
                 DB::raw("(DATE_FORMAT(created_at, " . ($type == 'year' ? "'%Y" : ($type == 'month' ? "'%Y-%m" : "'%Y-%m-%d")) . "')) as time"),
                 DB::raw('count(id) as count'),
@@ -368,7 +454,6 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                 'price'     => data_get($order, 'price', 0),
                 'quantity'  => data_get($order, 'order_details_sum_quantity', 0),
             ];
-
         }
 
         $result = collect(array_values($result));
@@ -423,8 +508,8 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
 
                     'stocks.orderDetails.order' => fn($q) => $q->select('id', 'total_price', 'tax', 'shop_id', 'status', 'created_at')
                         ->when(data_get($filter, 'shop_id'), fn($q, $shopId) => $q->where('shop_id', $shopId))
-						->whereDate('created_at', '>=', $dateFrom)
-						->whereDate('created_at', '<=', $dateTo)
+                        ->whereDate('created_at', '>=', $dateFrom)
+                        ->whereDate('created_at', '<=', $dateTo)
                         ->where('status', Order::STATUS_DELIVERED),
 
                     'stocks.stockExtras' => fn($q) => $q->withTrashed(),
@@ -435,10 +520,10 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
 
                 ])
                 ->when(data_get($filter, 'shop_id'), fn($q, $shopId) => $q->where('shop_id', $shopId))
-                ->when(is_array(data_get($filter, 'categories')), function (Builder $query) use($filter) {
+                ->when(is_array(data_get($filter, 'categories')), function (Builder $query) use ($filter) {
                     $query->whereIn('category_id', data_get($filter, 'categories'));
                 })
-                ->when(is_array(data_get($filter, 'products')), function (Builder $query) use($filter) {
+                ->when(is_array(data_get($filter, 'products')), function (Builder $query) use ($filter) {
                     $query->whereIn('id', data_get($filter, 'products'));
                 })
                 ->when(data_get($filter, 'search'), function ($q, $search) {
@@ -447,7 +532,7 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                             ->where('keywords', 'LIKE', "%$search%")
                             ->orWhere('id', 'LIKE', "%$search%")
                             ->orWhere('uuid', 'LIKE', "%$search%")
-                            ->orWhereHas('translation', function ($q) use($search) {
+                            ->orWhereHas('translation', function ($q) use ($search) {
                                 $q->where('title', 'LIKE', "%$search%")
                                     ->select('id', 'product_id', 'locale', 'title');
                             });
@@ -461,20 +546,20 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                                 ->whereHas('order', function ($o) use ($filter, $dateTo, $dateFrom) {
                                     $o
                                         ->when(data_get($filter, 'shop_id'), fn($q, $shopId) => $q->where('shop_id', $shopId))
-										->whereDate('created_at', '>=', $dateFrom)
-										->whereDate('created_at', '<=', $dateTo)
+                                        ->whereDate('created_at', '>=', $dateFrom)
+                                        ->whereDate('created_at', '<=', $dateTo)
                                         ->where('status', Order::STATUS_DELIVERED);
                                 });
                         });
                 })
                 ->select([
-					'id',
-					'keywords',
-					'uuid',
-					'category_id',
-					'active',
-					'shop_id',
-					'deleted_at',
+                    'id',
+                    'keywords',
+                    'uuid',
+                    'category_id',
+                    'active',
+                    'shop_id',
+                    'deleted_at',
                     'interval',
                 ])
                 ->orderBy($column, data_get($filter, 'sort', 'desc'));
@@ -485,7 +570,7 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
 
                 $result = ProductReportResource::collection($data->get())->toArray(request());
 
-                Excel::store(new ProductReportExport($result), "export/$name.xlsx",'public');
+                Excel::store(new ProductReportExport($result), "export/$name.xlsx", 'public');
 
                 return [
                     'status' => true,
@@ -496,7 +581,6 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                         'link'      => URL::to("storage/export/$name.xlsx"),
                     ]
                 ];
-
             }
 
             $data = $data->paginate(data_get($filter, 'perPage', 10));
@@ -529,23 +613,23 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                     $count = $stock->orderDetails
                         ->when(request('shop_id'), fn($q, $shopId) => $q->where('order.shop_id', $shopId))
                         ->where('order.status', Order::STATUS_DELIVERED)
-						->where('order.created_at', '>=', $dateFrom)
-						->where('order.created_at', '<=', $dateTo)
+                        ->where('order.created_at', '>=', $dateFrom)
+                        ->where('order.created_at', '<=', $dateTo)
                         ->groupBy('order_id')
                         ->count();
 
                     $orderQuantity = $stock->orderDetails
                         ->when(request('shop_id'), fn($q, $shopId) => $q->where('order.shop_id', $shopId))
                         ->where('order.status', Order::STATUS_DELIVERED)
-						->where('order.created_at', '>=', $dateFrom)
-						->where('order.created_at', '<=', $dateTo)
+                        ->where('order.created_at', '>=', $dateFrom)
+                        ->where('order.created_at', '<=', $dateTo)
                         ->sum('quantity');
 
                     $price = $stock->orderDetails
                         ->when(request('shop_id'), fn($q, $shopId) => $q->where('order.shop_id', $shopId))
                         ->where('order.status', Order::STATUS_DELIVERED)
-						->where('order.created_at', '>=', $dateFrom)
-						->where('order.created_at', '<=', $dateTo)
+                        ->where('order.created_at', '>=', $dateFrom)
+                        ->where('order.created_at', '<=', $dateTo)
                         ->groupBy('order_id')
                         ->reduce(fn($carry, $item) => $carry + $item->groupBy('order_id')->reduce(fn($c, $i) => $c + $i->sum('order.total_price')));
 
@@ -563,7 +647,6 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                     $result[$item->id]['price']    += $price;
                     $result[$item->id]['quantity'] += $orderQuantity;
                 }
-
             }
 
             return [
@@ -580,7 +663,6 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                     ]
                 ],
             ];
-
         } catch (Throwable $e) {
             return [
                 'status'    => false,
@@ -596,24 +678,78 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
      * @throws Exception
      * @throws \PhpOffice\PhpSpreadsheet\Writer\Exception
      */
+    // public function stockReportPaginate(array $filter): LengthAwarePaginator|array
+    // {
+    //     $locale = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
+
+    //     $query = Product::filter($filter)
+    //         ->with([
+    //             'translation' => fn($q) => $q
+    //                 ->where('locale', $this->language)
+    //                 ->orWhere('locale', $locale)
+    //                 ->select('id', 'product_id', 'locale', 'title'),
+    //         ])
+    //         ->when(is_array(data_get($filter, 'products')), function (Builder $query) use ($filter) {
+    //             $query->whereIn('id', data_get($filter, 'products'));
+    //         })
+    //         ->when(is_array(data_get($filter, 'categories')), function (Builder $query) use ($filter) {
+    //             $query->whereIn('category_id', data_get($filter, 'categories'));
+    //         })
+    //         ->where('addon', false)
+    //         ->select([
+    //             'id',
+    //             'category_id',
+    //             'status',
+    //             'shop_id',
+    //             'addon',
+    //             'interval',
+    //             'keywords'
+    //         ])
+    //         ->withSum('stocks', 'quantity')
+    //         ->orderBy(data_get($filter, 'column', 'id'), data_get($filter, 'sort', 'desc'));
+
+    //     if (data_get($filter, 'export') === 'excel') {
+
+    //         $name = 'stocks-report-' . Str::random(8);
+
+    //         Excel::store(new StockReportExport($query->get()), "export/$name.xlsx", 'public');
+    //         //            ExportJob::dispatchAfterResponse($name, $query->get(), StockReportExport::class);
+
+    //         return [
+    //             'path'      => 'public/export',
+    //             'file_name' => "export/$name.xlsx",
+    //             'link'      => URL::to("storage/export/$name.xlsx"),
+    //         ];
+    //     }
+
+    //     return $query->paginate(data_get($filter, 'perPage', 10));
+    // }
+
     public function stockReportPaginate(array $filter): LengthAwarePaginator|array
     {
-		$locale = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
+        $locale = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
 
-		$query = Product::filter($filter)
+        $query = Product::filter($filter)
             ->with([
                 'translation' => fn($q) => $q
-					->where('locale', $this->language)
-					->orWhere('locale', $locale)
+                    ->where('locale', $this->language)
+                    ->orWhere('locale', $locale)
                     ->select('id', 'product_id', 'locale', 'title'),
+                'stock.warehouse:id,name',
             ])
-			->when(is_array(data_get($filter, 'products')), function (Builder $query) use($filter) {
+            ->when(is_array(data_get($filter, 'products')), function (Builder $query) use ($filter) {
                 $query->whereIn('id', data_get($filter, 'products'));
             })
-            ->when(is_array(data_get($filter, 'categories')), function (Builder $query) use($filter) {
+            ->when(is_array(data_get($filter, 'categories')), function (Builder $query) use ($filter) {
                 $query->whereIn('category_id', data_get($filter, 'categories'));
             })
-			->where('addon', false)
+            // NEW: Warehouse filter əlavə edirik
+            ->when(data_get($filter, 'warehouse_id'), function (Builder $query) use ($filter) {
+                $query->whereHas('stocks', function ($q) use ($filter) {
+                    $q->where('warehouse_id', data_get($filter, 'warehouse_id'));
+                });
+            })
+            ->where('addon', false)
             ->select([
                 'id',
                 'category_id',
@@ -623,15 +759,20 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                 'interval',
                 'keywords'
             ])
-            ->withSum('stocks', 'quantity')
+            // UPDATED: Warehouse filter varsa yalnız o warehouse stock-unu hesabla
+            ->when(data_get($filter, 'warehouse_id'), function (Builder $query) use ($filter) {
+                $query->withSum(['stocks' => function ($q) use ($filter) {
+                    $q->where('warehouse_id', data_get($filter, 'warehouse_id'));
+                }], 'quantity');
+            }, function (Builder $query) {
+                // Warehouse filter yoxdursa bütün warehouse-ləri hesabla
+                $query->withSum('stocks', 'quantity');
+            })
             ->orderBy(data_get($filter, 'column', 'id'), data_get($filter, 'sort', 'desc'));
 
         if (data_get($filter, 'export') === 'excel') {
-
             $name = 'stocks-report-' . Str::random(8);
-
-            Excel::store(new StockReportExport($query->get()), "export/$name.xlsx",'public');
-//            ExportJob::dispatchAfterResponse($name, $query->get(), StockReportExport::class);
+            Excel::store(new StockReportExport($query->get()), "export/$name.xlsx", 'public');
 
             return [
                 'path'      => 'public/export',
@@ -685,7 +826,6 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                 if (!empty(data_get($filter, 'shop_id')) && is_int(data_get($filter, 'shop_id'))) {
                     $query->where('shop_id', data_get($filter, 'shop_id'));
                 }
-
             })
             ->whereHas('stockExtras')
             ->select([
@@ -723,7 +863,6 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                 'device'     => $agent->device(),
                 'user_id'    => data_get($filter, 'user_id'),
             ];
-
         }
 
         return UserActivity::where($where)
@@ -762,6 +901,4 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
             ->orderBy('count', 'desc')
             ->paginate(data_get($filter, 'perPage', 10));
     }
-
 }
-

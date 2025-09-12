@@ -28,6 +28,8 @@ class DatabaseSeeder extends Seeder
         $this->call(OrderSeeder::class);
         $this->call(SettingsSeeder::class);
 		$this->call(UserSeeder::class);
+		$this->call(WarehouseSeeder::class);
+
 //        if (app()->environment() == 'local') {
 //            Category::factory()->hasTranslations(1)->count(10)->create();
 //            Brand::factory()->count(10)->create();
