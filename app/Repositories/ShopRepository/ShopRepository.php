@@ -944,6 +944,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 				'min_qty',
 				'max_qty',
 				'interval',
+				'oem_code'
 			])
 			->get();
 
@@ -998,7 +999,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 								'countable_id',
 								'price',
 								'quantity',
-								'addon'
+								'addon',
 							])
 							->where('quantity', '>', 0)
 							->where('addon', false),
@@ -1025,6 +1026,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 						'max_qty',
 						'interval',
 						'addon',
+						'oem_code'
 					]),
 				'children.products' => fn($q) => $q
 					->with([
@@ -1055,7 +1057,8 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 								'countable_id',
 								'price',
 								'quantity',
-								'addon'
+								'addon',
+								'oem_code'
 							])
 							->where('quantity', '>', 0)
 							->where('addon', false),
@@ -1082,6 +1085,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 						'max_qty',
 						'interval',
 						'addon',
+						'oem_code'
 					])
 
 			])
