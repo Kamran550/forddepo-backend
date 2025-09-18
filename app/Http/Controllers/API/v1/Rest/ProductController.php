@@ -69,6 +69,7 @@ class ProductController extends RestBaseController
     {
         $product = $this->restProductRepository->productByUUID($uuid);
 
+        \Log::info('biz product:', ['prod:', $product]);
         if (!data_get($product, 'id')) {
             return $this->onErrorResponse([
                 'code'    => ResponseError::ERROR_404,
@@ -83,6 +84,8 @@ class ProductController extends RestBaseController
             1,
             auth('sanctum')->user()
         );
+
+        \Log::info('returned data:', ['ret:', ProductResource::make($product)]);
 
         return $this->successResponse(
             __('errors.' . ResponseError::NO_ERROR, locale: $this->language),

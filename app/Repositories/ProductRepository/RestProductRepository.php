@@ -36,8 +36,14 @@ class RestProductRepository extends CoreRepository
                     ->where('active', true)
                     ->where('status', data_get($filter, 'addon_status', Product::PUBLISHED)),
                 'stocks.bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)->select([
-                    'id', 'expired_at', 'bonusable_type', 'bonusable_id',
-                    'bonus_quantity', 'value', 'type', 'status'
+                    'id',
+                    'expired_at',
+                    'bonusable_type',
+                    'bonusable_id',
+                    'bonus_quantity',
+                    'value',
+                    'type',
+                    'status'
                 ]),
                 'stocks.bonus.stock',
                 'stocks.bonus.stock.stockExtras',
@@ -52,12 +58,12 @@ class RestProductRepository extends CoreRepository
                 'discounts' => fn($q) => $q->where('start', '<=', today())->where('end', '>=', today())->where('active', 1),
                 'translation' => fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
                 'shop' => fn($q) => $q
-					->select('id', 'status')
+                    ->select('id', 'status')
                     ->when(data_get($filter, 'shop_status'), function ($q, $status) {
-                    	$q->where('status', '=', $status);
-					}),
+                        $q->where('status', '=', $status);
+                    }),
                 'shop.translation' => fn($q) => $q
-					->where('locale', $this->language)
+                    ->where('locale', $this->language)
                     ->orWhere('locale', $locale)
                     ->select('id', 'locale', 'title', 'shop_id'),
                 'reviews',
@@ -70,29 +76,30 @@ class RestProductRepository extends CoreRepository
                     ->orWhere('locale', $locale)
                     ->select('id', 'locale', 'title', 'unit_id'),
             ])
-            ->whereHas('translation', fn($query) => $query
-               ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
+            ->whereHas(
+                'translation',
+                fn($query) => $query
+                    ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
             )
             ->when(data_get($filter, 'shop_status'), function ($q, $status) {
                 $q->whereHas('shop', function (Builder $query) use ($status) {
                     $query->where('status', '=', $status);
                 });
             })
-			->when(data_get($filter, 'rating'), function (Builder $q, $rating) {
+            ->when(data_get($filter, 'rating'), function (Builder $q, $rating) {
 
-				$rtg = [
-					0 => data_get($rating, 0, 0),
-					1 => data_get($rating, 1, 5),
-				];
+                $rtg = [
+                    0 => data_get($rating, 0, 0),
+                    1 => data_get($rating, 1, 5),
+                ];
 
-				$q
-					->withAvg([
-						'reviews' => fn(Builder $b) => $b->whereBetween('rating', $rtg)
-					], 'rating')
-					->having('reviews_avg_rating', '>=', $rtg[0])
-					->having('reviews_avg_rating', '<=', $rtg[1]);
-
-			}, fn($q) => $q->withAvg('reviews', 'rating'))
+                $q
+                    ->withAvg([
+                        'reviews' => fn(Builder $b) => $b->whereBetween('rating', $rtg)
+                    ], 'rating')
+                    ->having('reviews_avg_rating', '>=', $rtg[0])
+                    ->having('reviews_avg_rating', '<=', $rtg[1]);
+            }, fn($q) => $q->withAvg('reviews', 'rating'))
             ->when(data_get($filter, 'order_by'), function (Builder $query, $orderBy) {
 
                 switch ($orderBy) {
@@ -121,7 +128,6 @@ class RestProductRepository extends CoreRepository
                         }
                         break;
                 }
-
             })
             ->when(data_get($filter, 'column'), function (Builder $query, $column) use ($filter) {
                 $query->orderBy(
@@ -155,8 +161,8 @@ class RestProductRepository extends CoreRepository
                 'unit.translation' => fn($q) => $q->where('locale', $this->language)
                     ->orWhere('locale', $locale)
                     ->select('id', 'locale', 'title', 'unit_id'),
-                ])
-            ->whereHas('stock', function ($item){
+            ])
+            ->whereHas('stock', function ($item) {
                 $item->where('quantity', '>', 0);
             })
             ->whereHas('shop', function ($item) {
@@ -218,13 +224,15 @@ class RestProductRepository extends CoreRepository
         $locale  = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
 
         return $product
-            ->whereHas('translation',
+            ->whereHas(
+                'translation',
                 fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale))
             )
             ->withAvg('reviews', 'rating')
             ->withCount('reviews')
             ->with([
                 'stocks' => fn($q) => $q->with([
+                    'warehouse:id,name,code',
                     'bonus' => fn($q) => $q
                         ->with([
                             'stock' => fn($q) => $q->where('quantity', '>', 0),
@@ -283,9 +291,11 @@ class RestProductRepository extends CoreRepository
         $locale  = data_get(Language::languagesList()->where('default', 1)->first(), 'locale');
 
         return $product
-            ->whereHas('translation', fn($query) => $query->where(function ($q) use ($locale) {
-                $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale));
-            })
+            ->whereHas(
+                'translation',
+                fn($query) => $query->where(function ($q) use ($locale) {
+                    $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale));
+                })
             )
             ->with([
                 'stocks' => fn($q) => $q->with([

@@ -160,7 +160,13 @@ Route::group(['prefix' => 'v1', 'middleware' => ['block.ip']], function () {
         Route::get('shops/paginate',                [Rest\ShopController::class, 'paginate']);
         Route::get('shops/select-paginate',         [Rest\ShopController::class, 'selectPaginate']);
         Route::get('shops/search',                  [Rest\ShopController::class, 'shopsSearch']);
-        Route::get('shops/{uuid}',                  [Rest\ShopController::class, 'show']);
+        Route::get('shops/{uuid}', [Rest\ShopController::class, 'show'])->middleware('check.shop');
+
+        // Route::get('shops/{uuid}', [Rest\ShopController::class, 'show'])
+        //     ->middleware(['sanctum.check', 'check.shop']);
+
+
+        // Route::get('shops/{uuid}',                  [Rest\ShopController::class, 'show']);
         Route::get('shops/slug/{slug}',             [Rest\ShopController::class, 'showSlug']);
         Route::get('shops',                         [Rest\ShopController::class, 'shopsByIDs']);
         Route::get('shops-takes',                   [Rest\ShopController::class, 'takes']);

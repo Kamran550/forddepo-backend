@@ -98,8 +98,6 @@ class Kernel extends HttpKernel
         'sanctum.check'     => SanctumCheck::class,
         'block.ip'          => BlockIpMiddleware::class,
         'role'              => RoleMiddleware::class,
-        'check.shop'        => CheckSellerShop::class,
+        'check.shop' => \App\Http\Middleware\CheckShopAccess::class,
     ];
 }
-
-
