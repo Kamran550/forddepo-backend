@@ -1058,7 +1058,6 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 								'price',
 								'quantity',
 								'addon',
-								'oem_code'
 							])
 							->where('quantity', '>', 0)
 							->where('addon', false),
