@@ -22,9 +22,8 @@ class AdminRequest extends BaseRequest
             ],
             'status' => Rule::in(Product::STATUSES),
             'oem_code' => [
-                'required',
-                Rule::unique('products', 'oem_code')->ignore($this->route('product'), 'uuid'),
+                'required'
             ],
-        ] + (new SellerRequest)->rules();
+            ] + (new SellerRequest)->rules();
     }
 }

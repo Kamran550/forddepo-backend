@@ -47,6 +47,7 @@ class ProductResource extends JsonResource
             'addon'                 => (bool) $this->addon,
             'vegetarian'            => (bool) $this->vegetarian,
             'oem_code'              => $this->when($this->oem_code,      $this->oem_code),
+            'warehouse'             => $this->when($this->warehouse,     $this->warehouse),
             'img'                   => $this->when($this->img,             $this->img),
             'kcal'                  => $this->when($this->kcal,         $this->kcal),
             'carbs'                 => $this->when($this->carbs,         $this->carbs),

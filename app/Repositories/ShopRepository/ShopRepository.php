@@ -888,6 +888,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 		$recommended = Product::with([
 			'stock' => fn($q) => $q
 				->with([
+					'warehouse',
 					'bonus' => fn($q) => $q->where('expired_at', '>', now())->where('status', true)->select([
 						'id',
 						'expired_at',
@@ -979,6 +980,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 						'translation' => fn($q) => $q->where('locale', $this->language),
 						'stock' => fn($q) => $q
 							->with([
+								'warehouse',
 								'bonus' => fn($q) => $q
 									->where('expired_at', '>', now())
 									->where('status', true)
@@ -1037,6 +1039,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 						'translation' => fn($q) => $q->where('locale', $this->language),
 						'stock' => fn($q) => $q
 							->with([
+								'warehouse',
 								'bonus' => fn($q) => $q
 									->where('expired_at', '>', now())
 									->where('status', true)
@@ -1135,6 +1138,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 			->orderBy($column, data_get($filter, 'sort', 'asc'))
 			->get();
 
+			\Log::info('products:',context: ['products:', ProductResource::collection($recommended)]);
 		return [
 			'recommended' => ProductResource::collection($recommended),
 			'all'         => CategoryResource::collection($categories)
