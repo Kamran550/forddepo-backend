@@ -354,6 +354,7 @@ class ProductController extends SellerBaseController
             'translation' => fn($q) => $q
                ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
 
+            'stocks.warehouse',
             'stocks.stockExtras.group.translation' => fn($q) => $q
                ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
 

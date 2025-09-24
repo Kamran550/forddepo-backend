@@ -24,6 +24,7 @@ class SimpleStockResource extends JsonResource
             'countable_id'              => $this->when($this->countable_id, $this->countable_id),
             'price'                     => $this->rate_price,
             'quantity'                  => $this->quantity,
+            'maxQuantity'               => $this->maxQuantity,
             'sku'                       => $this->when($this->sku, $this->sku),
             'warehouse'                 => $this->whenLoaded('warehouse', $this->warehouse?->name),
 

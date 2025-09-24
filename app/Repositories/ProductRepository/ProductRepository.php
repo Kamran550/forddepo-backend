@@ -140,6 +140,7 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
             ->whereHas('translation', fn($q) => $q->where('locale', $this->language))
             ->withAvg('reviews', 'rating')
             ->with([
+                'stocks.warehouse',
                 'stocks.addons',
                 'stocks.addons.addon.stock',
                 'stocks.addons.addon.translation' => fn($q) => $q
@@ -182,6 +183,7 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
             ->with([
                 'galleries' => fn($q) => $q->select('id', 'type', 'loadable_id', 'path', 'title'),
                 'properties',
+                'stocks.warehouse',
                 'stocks.stockExtras.group.translation' => fn($q) => $q
                     ->where('locale', $this->language)
                     ->orWhere('locale', $locale),
@@ -310,7 +312,9 @@ class ProductRepository extends CoreRepository implements ProductRepoInterface
                     'countable_id',
                     'price',
                     'quantity',
+                    'warehouse_id',
                 ]),
+                'stocks.warehouse',
                 'stocks.stockExtras.group.translation' => fn($q) => $q
                     ->where('locale', $this->language)
                     ->orWhere('locale', $locale),

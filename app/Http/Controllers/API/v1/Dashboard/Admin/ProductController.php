@@ -119,6 +119,8 @@ class ProductController extends AdminBaseController
             abort(403);
         }
 
+        Log::info('product:', ['product:', ProductResource::make($product->loadMissing(['translations', 'metaTags']))]);
+
         return $this->successResponse(
             __('errors.' . ResponseError::SUCCESS, locale: $this->language),
             ProductResource::make($product->loadMissing(['translations', 'metaTags']))
@@ -336,6 +338,7 @@ class ProductController extends AdminBaseController
             'translation' => fn($q) => $q
                 ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
 
+            'stocks.warehouse',
             'stocks.stockExtras.group.translation' => fn($q) => $q
                 ->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
 

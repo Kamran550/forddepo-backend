@@ -64,9 +64,7 @@ trait Countable
                         }
                     }
 
-                    $warehouseData = data_get($item, 'warehouse');
-
-                    $warehouseId = data_get($warehouseData, 'value');
+                    $warehouseId = data_get($item, 'warehouse');
                     Log::info('Trait is basinda id ware:', ['id:', $warehouseId]);
                     Log::info('item trait:', ['item:', $item]);
                     if (data_get($item, 'stock_id')) {
@@ -77,6 +75,7 @@ trait Countable
                             'countable_type' => Product::class,
                             'price'          => data_get($item, 'price'),
                             'quantity'       => data_get($item, 'quantity'),
+                            'maxQuantity'    => data_get($item, 'maxQuantity', $stock->maxQuantity),
                             'warehouse_id'   => $warehouseId, // Warehouse ID əlavə edin
                             'sku'            => data_get($item, 'sku'),
                             'addon'          => $this->addon
@@ -90,6 +89,7 @@ trait Countable
                             'addon'          => true,
                             'price'          => data_get($item, 'price'),
                             'quantity'       => data_get($item, 'quantity'),
+                            'maxQuantity'    => data_get($item, 'maxQuantity', data_get($item, 'quantity')),
                             'warehouse_id'   => $warehouseId, // Warehouse ID əlavə edin
                             'sku'            => data_get($item, 'sku'),
                         ]);
@@ -103,6 +103,7 @@ trait Countable
                             'addon'          => $this->addon,
                             'price'          => data_get($item, 'price'),
                             'quantity'       => data_get($item, 'quantity'),
+                            'maxQuantity'    => data_get($item, 'maxQuantity', data_get($item, 'quantity')),
                             'sku'            => data_get($item, 'sku'),
                         ]);
                     }

@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property int $countable_id
  * @property float $price
  * @property int $quantity
+ * @property int $maxQuantity
  * @property string $sku
  * @property boolean $addon
  * @property string $img
@@ -87,6 +88,7 @@ class Stock extends Model
 
     protected $casts = [
         'extras' => 'array',
+        'maxQuantity' => 'integer',
     ];
 
     protected $hidden = [

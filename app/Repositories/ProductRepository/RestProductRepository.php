@@ -27,6 +27,7 @@ class RestProductRepository extends CoreRepository
             ->filter($filter)
             ->with([
                 'stocks' => fn($q) => $q->where('addon', false)->where('quantity', '>', 0),
+                'stocks.warehouse',
                 'stocks.addons.addon' => fn($query) => $query->with([
                     'stock'         => fn($q) => $q->where('addon', true)->where('quantity', '>', 0),
                     'translation'   => fn($q) => $q->where(fn($q) => $q->where('locale', $this->language)->orWhere('locale', $locale)),
@@ -299,6 +300,7 @@ class RestProductRepository extends CoreRepository
             )
             ->with([
                 'stocks' => fn($q) => $q->with([
+                    'warehouse:id,name,code',
                     'bonus' => fn($q) => $q
                         ->with([
                             'stock' => fn($q) => $q->where('quantity', '>', 0),

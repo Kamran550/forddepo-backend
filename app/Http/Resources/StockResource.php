@@ -27,6 +27,7 @@ class StockResource extends JsonResource
             'countable_id'  => $this->when($this->countable_id, $this->countable_id),
             'price'         => $this->rate_price,
             'quantity'      => $this->quantity,
+            'maxQuantity'   => $this->maxQuantity,
             'sku'           => $this->when($this->sku, $this->sku),
             'min_quantity'  => $this->when($this->getOriginal('pivot_min_quantity'), $this->getOriginal('pivot_min_quantity')),
             'discount'      => $this->when($this->rate_actual_discount, $this->rate_actual_discount),

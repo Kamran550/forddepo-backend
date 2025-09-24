@@ -27,6 +27,8 @@ class addInStockRequest extends BaseRequest
             ],
             'extras.*.price'    => 'required|numeric|min:0',
             'extras.*.quantity' => 'required|integer|min:0',
+            'extras.*.maxQuantity' => 'required|integer|min:0',
+            'extras.*.warehouse' => 'required|integer|exists:warehouses,id',
 			'extras.*.images'  	=> ['array'],
 			'extras.*.images.*'	=> ['string'],
 //			'extras.*.inventory_items' 	   		  			=> 'required|array',
