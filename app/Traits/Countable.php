@@ -64,7 +64,14 @@ trait Countable
                         }
                     }
 
-                    $warehouseId = data_get($item, 'warehouse');
+                    $warehouse = data_get($item, 'warehouse');
+                    // Warehouse string olaraq gəlirsə, ID-ni tap
+                    if (is_string($warehouse)) {
+                        $warehouseModel = \App\Models\Warehouse::where('name', $warehouse)->first();
+                        $warehouseId = $warehouseModel ? $warehouseModel->id : null;
+                    } else {
+                        $warehouseId = $warehouse;
+                    }
                     Log::info('Trait is basinda id ware:', ['id:', $warehouseId]);
                     Log::info('item trait:', ['item:', $item]);
                     if (data_get($item, 'stock_id')) {
