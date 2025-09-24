@@ -906,6 +906,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 					'countable_id',
 					'price',
 					'quantity',
+					'maxQuantity',
 					'addon',
 				])
 				->where('addon', false)
@@ -1001,6 +1002,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 								'countable_id',
 								'price',
 								'quantity',
+								'maxQuantity',
 								'addon',
 							])
 							->where('quantity', '>', 0)
@@ -1060,6 +1062,7 @@ class ShopRepository extends CoreRepository implements ShopRepoInterface
 								'countable_id',
 								'price',
 								'quantity',
+								'maxQuantity',
 								'addon',
 							])
 							->where('quantity', '>', 0)
