@@ -207,7 +207,24 @@ class OrderService extends CoreService implements OrderServiceInterface
 							'paid_amount' => $order->orderPayments()->sum('amount')
 						]);
 					}
+				} else {
+					// Full payment case - add payment to orderPayments and update paid_amount
+					Log::info('full payment case - adding payment and updating paid_amount');
+					$order->addPayment(
+						amount: $order->total_price,
+						transactionId: null,
+						paymentMethod: $data['payment_method'] ?? 'cash',
+						note: $data['payment_note'] ?? 'Full payment'
+					);
+
+
+					$order->update([
+						'paid_amount' => $order->orderPayments()->sum('amount'),
+						'is_partial_payment' => false
+					]);
 				}
+
+
 
 
 				if (data_get($data, 'payment_id') && !data_get($data, 'split')) {
