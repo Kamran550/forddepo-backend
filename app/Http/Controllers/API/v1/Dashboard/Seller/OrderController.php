@@ -5,12 +5,14 @@ namespace App\Http\Controllers\API\v1\Dashboard\Seller;
 use App\Exports\OrderExport;
 use App\Helpers\ResponseError;
 use App\Http\Requests\FilterParamsRequest;
+use App\Http\Requests\Order\AddPartialPaymentRequest;
 use App\Http\Requests\Order\StatusUpdateRequest;
 use App\Http\Requests\Order\WaiterUpdateRequest;
 use App\Http\Requests\Order\DeliveryManUpdateRequest;
 use App\Http\Requests\Order\StocksCalculateRequest;
 use App\Http\Requests\Order\StoreRequest;
 use App\Http\Requests\Order\UpdateRequest;
+use App\Http\Resources\OrderPaymentResource;
 use App\Http\Resources\OrderResource;
 use App\Imports\OrderImport;
 use App\Models\Order;
@@ -22,9 +24,11 @@ use App\Repositories\OrderRepository\AdminOrderRepository;
 use App\Services\Interfaces\OrderServiceInterface;
 use App\Services\OrderService\OrderStatusUpdateService;
 use App\Traits\Notification;
+use DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
 
@@ -127,6 +131,61 @@ class OrderController extends SellerBaseController
             'ids'    => array_keys($admins)
         ];
     }
+
+    	public function addPartialPayment(AddPartialPaymentRequest $request): JsonResponse
+	{
+		try {
+			Log::info('add partial payment', ['req:', $request->all()]);
+			DB::beginTransaction();
+
+			$order = Order::with(['orderPayments', 'user', 'shop'])
+				->findOrFail($request->order_id);
+
+			// Check if order can receive payments
+			if (in_array($order->status, ['delivered', 'canceled', 'refunded'])) {
+				return response()->json([
+					'status' => false,
+					'code' => 422,
+					'message' => 'Cannot add payment to this order status.',
+				], 422);
+			}
+
+			// Add payment using the model method
+			$payment = $order->addPayment(
+				amount: $request->amount,
+				transactionId: null, // You can create transaction if needed
+				paymentMethod: $request->payment_method ?? 'cash',
+				note: $request->note
+			);
+
+			DB::commit();
+
+			return response()->json([
+				'status' => true,
+				'code' => 200,
+				'message' => 'Payment added successfully.',
+				'data' => [
+					'payment' => new OrderPaymentResource($payment),
+					'order' => new OrderResource($order->fresh(['orderPayments', 'user', 'shop'])),
+				]
+			]);
+		} catch (\InvalidArgumentException $e) {
+			DB::rollback();
+			return response()->json([
+				'status' => false,
+				'code' => 422,
+				'message' => $e->getMessage(),
+			], 422);
+		} catch (\Exception $e) {
+			DB::rollback();
+			return response()->json([
+				'status' => false,
+				'code' => 500,
+				'message' => 'An error occurred while adding payment.',
+				'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+			], 500);
+		}
+	}
 
     /**
      * Display the specified resource.

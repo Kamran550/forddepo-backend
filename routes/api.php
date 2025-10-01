@@ -160,7 +160,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['block.ip']], function () {
         Route::get('shops/paginate',                [Rest\ShopController::class, 'paginate']);
         Route::get('shops/select-paginate',         [Rest\ShopController::class, 'selectPaginate']);
         Route::get('shops/search',                  [Rest\ShopController::class, 'shopsSearch']);
-        Route::get('shops/{uuid}', [Rest\ShopController::class, 'show'])->middleware('check.shop');
+        Route::get('shops/{uuid}', [Rest\ShopController::class, 'show'])->middleware('check.shop-acc');
 
         // Route::get('shops/{uuid}', [Rest\ShopController::class, 'show'])
         //     ->middleware(['sanctum.check', 'check.shop']);
@@ -533,6 +533,9 @@ Route::group(['prefix' => 'v1', 'middleware' => ['block.ip']], function () {
         // SELLER BLOCK
         Route::group(['prefix' => 'seller', 'middleware' => ['sanctum.check', 'role:seller|moderator'], 'as' => 'seller.'], function () {
 
+
+            Route::post('/orders/partial-payment', [Seller\OrderController::class, 'addPartialPayment'])
+                ->name('orders.add-partial-payment');
             /* Dashboard */
             Route::get('statistics',                [Seller\DashboardController::class, 'ordersStatistics']);
             Route::get('statistics/orders/chart',   [Seller\DashboardController::class, 'ordersChart']);
