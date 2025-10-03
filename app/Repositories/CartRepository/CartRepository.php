@@ -225,29 +225,29 @@ class CartRepository extends CoreRepository
         $deliveryFee  = 0;
         $deliveryInfo = null;
 
-        // if (data_get($data, 'type') === Order::DELIVERY) {
-        //     $helper      = new Utility;
-        //     $km          = $helper->getDistance($cart->shop->location, data_get($data, 'address'));
+        if (data_get($data, 'type') === Order::DELIVERY) {
+            $helper      = new Utility;
+            $km          = $helper->getDistance($cart->shop->location, data_get($data, 'address'));
 
-        //     Log::info("km:", ['km:', $km]);
+            Log::info("km:", ['km:', $km]);
 
-        //     $deliveryFee = $helper->getPriceByDistance($km, $cart->shop, (float)data_get($data, 'rate', 1));
-        // }
+            $deliveryFee = $helper->getPriceByDistance($km, $cart->shop, (float)data_get($data, 'rate', 1));
+        }
 
 
         Log::info('price:', ['price:', $price]);
         Log::info('total price:', ['total price:', $totalPrice]);
 
-        if (data_get($data, 'type') === Order::DELIVERY) {
-            Log::info('deliverye girdi bu sefer');
-            $helper      = new Utility;
-            $km          = $helper->getDistance($cart->shop->location, data_get($data, 'address'));
+        // if (data_get($data, 'type') === Order::DELIVERY) {
+        //     Log::info('deliverye girdi bu sefer');
+        //     $helper      = new Utility;
+        //     $km          = $helper->getDistance($cart->shop->location, data_get($data, 'address'));
 
-            Log::info("data:", ['data:', $data]);
-            $deliveryFee = $helper->getPriceByDistance($km, $cart->shop, (float)data_get($data, 'rate', 1));
-            Log::info('salam');
-            ['delivery_fee' => $deliveryFee, 'delivery_info' => $deliveryInfo] = $this->calculateCartFreeDelivery2($deliveryFee, $km, $price, $data, $cart, $deliveryInfo);
-        }
+        //     Log::info("data:", ['data:', $data]);
+        //     $deliveryFee = $helper->getPriceByDistance($km, $cart->shop, (float)data_get($data, 'rate', 1));
+        //     Log::info('salam');
+        //     ['delivery_fee' => $deliveryFee, 'delivery_info' => $deliveryInfo] = $this->calculateCartFreeDelivery2($deliveryFee, $km, $price, $data, $cart, $deliveryInfo);
+        // }
 
 
 
