@@ -304,7 +304,7 @@ class OrderService extends CoreService implements OrderServiceInterface
 
 				Log::info('setOrderParams2-e getmezden evvelki order:');
 				// admin panelden datani duzelt ele etki admin panelden total_price-de gonderilsin
-				$order->update($this->setOrderParams2($order, $data, $shop));
+				$order->update($this->setOrderParams($data, $shop));
 
 				if (data_get($data, 'images.0')) {
 
@@ -314,7 +314,7 @@ class OrderService extends CoreService implements OrderServiceInterface
 				}
 
 				$order = (new OrderDetailService)->create($order, data_get($data, 'products', []));
-				$this->calculateOrder2($order, $shop, $data);
+				$this->calculateOrder($order, $shop, $data);
 
 				return $order;
 			});
@@ -559,17 +559,17 @@ class OrderService extends CoreService implements OrderServiceInterface
 		$totalPrice     = $order->orderDetails->sum('total_price');
 		Log::info('totalPrice:', ['tot:', $totalPrice]);
 		$rate 	     = (float)data_get($data, 'rate', 1);
-		if (data_get($data, 'location') && data_get($data, 'delivery_type') === Order::DELIVERY) {
-			$helper      = new Utility;
-			$km          = $helper->getDistance($shop->location, data_get($data, 'location'));
-			// Function cagir
-			Log::info('orderin updatesindeki setOrder');
-			['delivery_fee' => $deliveryFee, 'admin_delivery_fee' => $adminDeliveryFee] =
-				$this->calculateOrderFreeDelivery3($km, $shop, $data, $rate, $totalPrice);
+		// if (data_get($data, 'location') && data_get($data, 'delivery_type') === Order::DELIVERY) {
+		// 	$helper      = new Utility;
+		// 	$km          = $helper->getDistance($shop->location, data_get($data, 'location'));
+		// 	// Function cagir
+		// 	Log::info('orderin updatesindeki setOrder');
+		// 	['delivery_fee' => $deliveryFee, 'admin_delivery_fee' => $adminDeliveryFee] =
+		// 		$this->calculateOrderFreeDelivery3($km, $shop, $data, $rate, $totalPrice);
 
-			Log::info('ser ortder params blokdan cixdi', ['delivery:', $deliveryFee]);
-			Log::info('ser ortder params blokdan cixdi', ['adminDeliveryFee:', $adminDeliveryFee]);
-		}
+		// 	Log::info('ser ortder params blokdan cixdi', ['delivery:', $deliveryFee]);
+		// 	Log::info('ser ortder params blokdan cixdi', ['adminDeliveryFee:', $adminDeliveryFee]);
+		// }
 
 
 		if (data_get($data, 'delivery_type') === Order::POINT) {
@@ -689,7 +689,6 @@ class OrderService extends CoreService implements OrderServiceInterface
 			'total_price'    => $totalPrice,
 			'delivery_fee'   => $deliveryFee,
 			'commission_fee' => $commissionFee,
-			'admin_delivery_fee' => $adminDeliveryFee,
 			'service_fee'    => $serviceFee,
 			'total_discount' => max($totalDiscount, 0),
 			'tax'            => $shopTax,
@@ -1010,7 +1009,7 @@ class OrderService extends CoreService implements OrderServiceInterface
 		$deliveryFee = 0;
 		$info        = [];
 		$rate 	     = (float)data_get($data, 'rate', 1);
-
+		Log::info('rate:', ['rattt:', $rate]);
 
 		$cartId = data_get($data, 'cart_id');
 		Log::info('cartID;', ['cart:', $cartId]);
@@ -1019,23 +1018,24 @@ class OrderService extends CoreService implements OrderServiceInterface
 
 		$price = data_get($cart, 'total_price');
 
-		// if (data_get($data, 'location') && data_get($data, 'delivery_type') === Order::DELIVERY) {
-		// 	$helper      = new Utility;
-		// 	$km          = $helper->getDistance($shop->location, data_get($data, 'location'));
-		// 	$deliveryFee = $helper->getPriceByDistance($km, $shop, $rate) / $rate;
-		// }
-
 		if (data_get($data, 'location') && data_get($data, 'delivery_type') === Order::DELIVERY) {
 			$helper      = new Utility;
 			$km          = $helper->getDistance($shop->location, data_get($data, 'location'));
-			// Function cagir
-			Log::info('orderin updatesindeki setOrder');
-			['delivery_fee' => $deliveryFee, 'admin_delivery_fee' => $adminDeliveryFee, 'info' => $info] =
-				$this->calculateOrderFreeDelivery2($km, $shop, $data, $rate, $price, $info);
-
-			Log::info('ser ortder params blokdan cixdi', ['delivery:', $deliveryFee]);
-			Log::info('ser ortder params blokdan cixdi', ['adminDeliveryFee:', $adminDeliveryFee]);
+			Log::info('km:', ['km:', $km]);
+			$deliveryFee = $helper->getPriceByDistance($km, $shop, $rate) / $rate;
 		}
+
+		// if (data_get($data, 'location') && data_get($data, 'delivery_type') === Order::DELIVERY) {
+		// 	$helper      = new Utility;
+		// 	$km          = $helper->getDistance($shop->location, data_get($data, 'location'));
+		// 	// Function cagir
+		// 	Log::info('orderin updatesindeki setOrder');
+		// 	['delivery_fee' => $deliveryFee, 'admin_delivery_fee' => $adminDeliveryFee, 'info' => $info] =
+		// 		$this->calculateOrderFreeDelivery2($km, $shop, $data, $rate, $price, $info);
+
+		// 	Log::info('ser ortder params blokdan cixdi', ['delivery:', $deliveryFee]);
+		// 	Log::info('ser ortder params blokdan cixdi', ['adminDeliveryFee:', $adminDeliveryFee]);
+		// }
 
 		if (data_get($data, 'delivery_type') === Order::POINT) {
 			$deliveryPoint = DeliveryPoint::find($data['delivery_point_id'])?->price;
@@ -1094,7 +1094,7 @@ class OrderService extends CoreService implements OrderServiceInterface
 
 
 
-
+		Log::info('createParrrr:', ['parra:', $createParams]);
 		return $createParams;
 	}
 
@@ -1125,13 +1125,13 @@ class OrderService extends CoreService implements OrderServiceInterface
 		$price     = $order->orderDetails->sum('total_price');
 		Log::info('BU son pricedi qardas:', ['price:', $price]);
 
-		// $price = data_get($data, 'origin_price');
+		$price = data_get($data, 'origin_price');
 
-		// if (data_get($data, 'location') && data_get($data, 'delivery_type') === Order::DELIVERY) {
-		// 	$helper      = new Utility;
-		// 	$km          = $helper->getDistance($shop->location, data_get($data, 'location'));
-		// 	$deliveryFee = $helper->getPriceByDistance($km, $shop, $rate) / $rate;
-		// }
+		if (data_get($data, 'location') && data_get($data, 'delivery_type') === Order::DELIVERY) {
+			$helper      = new Utility;
+			$km          = $helper->getDistance($shop->location, data_get($data, 'location'));
+			$deliveryFee = $helper->getPriceByDistance($km, $shop, $rate) / $rate;
+		}
 
 		// if (data_get($data, 'location') && data_get($data, 'delivery_type') === Order::DELIVERY) {
 		// 	$helper      = new Utility;
