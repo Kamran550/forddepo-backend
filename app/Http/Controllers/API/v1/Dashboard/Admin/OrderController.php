@@ -193,7 +193,7 @@ class OrderController extends AdminBaseController
 				->findOrFail($request->order_id);
 
 			// Check if order can receive payments
-			if (in_array($order->status, ['delivered', 'canceled', 'refunded'])) {
+			if (in_array($order->status, ['canceled', 'refunded'])) {
 				return response()->json([
 					'status' => false,
 					'code' => 422,
