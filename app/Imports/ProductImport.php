@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Stock;
 use App\Models\Unit;
 use App\Models\UnitTranslation;
+use App\Models\Warehouse;
 use DB;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Support\Collection;
@@ -54,6 +55,7 @@ class ProductImport extends BaseImport implements ToCollection, WithHeadingRow, 
                     'active'      => data_get($row, 'active') === 'active' ? 1 : 0,
                     'img'         => data_get($row, 'img'),
                     'qr_code'     => data_get($row, 'qr_code', ''),
+                    'oem_code'    => data_get($row, 'oem_code', null),
                     'status'      => in_array(data_get($row, 'status'), Product::STATUSES) ? data_get($row, 'status') : Product::PENDING,
                     'min_qty'     => data_get($row, 'min_qty', 1),
                     'max_qty'     => data_get($row, 'max_qty', 1000000),
@@ -220,12 +222,29 @@ class ProductImport extends BaseImport implements ToCollection, WithHeadingRow, 
 						$isStockAddon = true;
 					}
 
+					// Warehouse məlumatını tap
+					$warehouseId = null;
+					$warehouseCode = $stocks["{$groupKey}_warehouse_code"] ?? null;
+					
+					if ($warehouseCode) {
+						$warehouse = Warehouse::where('code', strtoupper(trim($warehouseCode)))
+							->where('is_active', true)
+							->first();
+						
+						if ($warehouse) {
+							$warehouseId = $warehouse->id;
+						}
+					}
+
+					\Log::info('stock create', ['stock:', $stocks["{$groupKey}_max_quantity"]]);
 					$stock = Stock::create([
 						'countable_type' => Product::class,
 						'countable_id' 	 => $product->id,
 						'sku' 			 => $stocks["{$groupKey}_sku"] ?? 0,
 						'price' 		 => $stocks["{$groupKey}_price"] ?? 0,
 						'quantity' 		 => $stocks["{$groupKey}_quantity"] ?? 0,
+						'maxQuantity' 	 => $stocks["{$groupKey}_max_quantity"] ?? 0,
+						'warehouse_id' 	 => $warehouseId,
 						'addon' 		 => $isStockAddon,
 						'img'	 		 => $stocks["{$groupKey}_img"] ?? '',
 					]);
@@ -391,13 +410,29 @@ class ProductImport extends BaseImport implements ToCollection, WithHeadingRow, 
 
 			}
 
+			// Addon üçün warehouse məlumatını tap
+			$addonWarehouseId = null;
+			$addonWarehouseCode = data_get($addonGroup, "{$addonKey}_warehouse_code");
+			
+			if ($addonWarehouseCode) {
+				$addonWarehouse = Warehouse::where('code', strtoupper(trim($addonWarehouseCode)))
+					->where('is_active', true)
+					->first();
+				
+				if ($addonWarehouse) {
+					$addonWarehouseId = $addonWarehouse->id;
+				}
+			}
+
 			$addon->stock()->updateOrCreate([
 				'id' => $addon->stock?->id
 			], [
-				'price'		=> data_get($addonGroup, "{$addonKey}_price"),
-				'quantity'	=> data_get($addonGroup, "{$addonKey}_quantity"),
-				'sku'		=> data_get($addonGroup, "{$addonKey}_sku"),
-				'addon'		=> true,
+				'price'			=> data_get($addonGroup, "{$addonKey}_price"),
+				'quantity'		=> data_get($addonGroup, "{$addonKey}_quantity"),
+				'sku'			=> data_get($addonGroup, "{$addonKey}_sku"),
+				'addon'			=> true,
+				'maxQuantity'	=> data_get($addonGroup, "{$addonKey}_max_quantity", 0),
+				'warehouse_id'	=> $addonWarehouseId,
 			]);
 
 			$addon->fresh(['stock'])->toArray();
