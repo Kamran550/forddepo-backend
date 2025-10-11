@@ -364,6 +364,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['block.ip']], function () {
             Route::get('search-sending',                        [User\ProfileController::class, 'searchSending']);
 
             Route::get('orders/paginate',                       [User\OrderController::class, 'paginate']);
+            Route::get('orders/debts/{userId}',                [User\OrderController::class, 'getUserDebts']);
             Route::post('orders/review/{id}',                   [User\OrderController::class, 'addOrderReview']);
             Route::post('orders/deliveryman-review/{id}',       [User\OrderController::class, 'addDeliverymanReview']);
             Route::post('orders/waiter-review/{id}',            [User\OrderController::class, 'addWaiterReview']);
@@ -966,6 +967,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['block.ip']], function () {
             Route::get('orders/truncate/db',             [Admin\OrderController::class, 'truncate']);
             Route::get('user-orders/{id}',               [Admin\OrderController::class, 'userOrder']);
             Route::get('user-orders/{id}/paginate',      [Admin\OrderController::class, 'userOrders']);
+            Route::get('user-debts/{userId}',            [Admin\OrderController::class, 'getUserDebts']);
             Route::get('orders/pending/transaction',     [Admin\OrderController::class, 'ordersPendingTransaction']);
 
             Route::post('/orders/partial-payment', [Admin\OrderController::class, 'addPartialPayment'])

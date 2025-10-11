@@ -326,4 +326,45 @@ class OrderController extends UserBaseController
 
 		return $this->successResponse(ResponseError::NO_ERROR);
 	}
+
+	/**
+	 * Get total debt for a specific user
+	 *
+	 * @param int $userId
+	 * @return JsonResponse
+	 */
+	public function getUserDebts(int $userId): JsonResponse
+	{
+		// Get all orders for the user
+		$orders = Order::where('user_id', $userId)
+			->whereNotIn('status', [Order::STATUS_CANCELED])
+			->get();
+
+		// Calculate total debt (total_price - paid_amount)
+		$totalDebt = $orders->sum(function ($order) {
+			return $order->total_price - $order->paid_amount;
+		});
+
+		// Get detailed debt information
+		$debts = $orders->map(function ($order) {
+			$debt = $order->total_price - $order->paid_amount;
+			if ($debt > 0) {
+				return [
+					'order_id' => $order->id,
+					'total_price' => $order->total_price,
+					'paid_amount' => $order->paid_amount,
+					'remaining_debt' => $debt,
+					'status' => $order->status,
+					'created_at' => $order->created_at,
+				];
+			}
+		})->filter()->values();
+
+		return $this->successResponse(ResponseError::NO_ERROR, [
+			'user_id' => $userId,
+			'total_debt' => $totalDebt,
+			'orders_with_debt' => $debts,
+			'total_orders_with_debt' => $debts->count(),
+		]);
+	}
 }
