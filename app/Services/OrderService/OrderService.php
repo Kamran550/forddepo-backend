@@ -190,24 +190,33 @@ class OrderService extends CoreService implements OrderServiceInterface
 				$order->refresh();
 
 
-				if (isset($data['partial_payment']['is_partial']) && $data['partial_payment']['is_partial'] === true) {
-					Log::info('partial_payment check if');
-					$paidAmount = (float) data_get($data, 'partial_payment.paid_amount', 0);
-					if ($paidAmount > 0) {
-						// orderPayments cədvəlini əlavə et
-						$order->addPayment(
-							amount: $paidAmount,
-							transactionId: null,
-							paymentMethod: $data['partial_payment']['payment_method'] ?? 'cash',
-							note: $data['partial_payment']['note'] ?? 'User partial payment'
-						);
+			if (isset($data['partial_payment']['is_partial']) && $data['partial_payment']['is_partial'] === true) {
+				Log::info('partial_payment check if');
+				$paidAmount = (float) data_get($data, 'partial_payment.paid_amount', 0);
+				
+				// is_partial_payment həmişə true olmalıdır, paid_amount 0 olsa belə
+				$updateData = [
+					'is_partial_payment' => true,
+					'paid_amount' => $paidAmount
+				];
+				
+				if ($paidAmount > 0) {
+					// orderPayments cədvəlini əlavə et
+					$order->addPayment(
+						amount: $paidAmount,
+						transactionId: null,
+						paymentMethod: $data['partial_payment']['payment_method'] ?? 'cash',
+						note: $data['partial_payment']['note'] ?? 'User partial payment'
+					);
 
-						// indi orders cədvəlində paid_amount-u yenilə
-						$order->update([
-							'paid_amount' => $order->orderPayments()->sum('amount')
-						]);
-					}
-				} else {
+					// indi orders cədvəlində paid_amount-u yenilə
+					$updateData['paid_amount'] = $order->orderPayments()->sum('amount');
+				}
+				
+				// paid_amount 0 olsa belə, is_partial_payment true olaraq save et
+				$order->update($updateData);
+				Log::info('partial_payment updated:', ['updateData' => $updateData]);
+			} else {
 					// Full payment case - add payment to orderPayments and update paid_amount
 					Log::info('full payment case - adding payment and updating paid_amount');
 					$order->addPayment(
@@ -1092,7 +1101,14 @@ class OrderService extends CoreService implements OrderServiceInterface
 			'info'              => $info,
 		];
 
-
+		// partial_payment varsa, is_partial_payment və paid_amount set et
+		if (isset($data['partial_payment']['is_partial']) && $data['partial_payment']['is_partial'] === true) {
+			$createParams['is_partial_payment'] = true;
+			$createParams['paid_amount'] = (float) data_get($data, 'partial_payment.paid_amount', 0);
+		} else {
+			$createParams['is_partial_payment'] = false;
+			$createParams['paid_amount'] = 0;
+		}
 
 		Log::info('createParrrr:', ['parra:', $createParams]);
 		return $createParams;
@@ -1206,8 +1222,8 @@ class OrderService extends CoreService implements OrderServiceInterface
 
 
 		if (isset($data['partial_payment']['is_partial']) && $data['partial_payment']['is_partial'] === true) {
-			$params['is_partial_payment']   = true;
-			// $params['paid_amount']  = data_get($data, 'partial_payment.paid_amount', 0);
+			$updateParams['is_partial_payment'] = true;
+			$updateParams['paid_amount'] = (float) data_get($data, 'partial_payment.paid_amount', 0);
 		}
 		return $updateParams;
 	}
