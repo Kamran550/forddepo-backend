@@ -79,7 +79,7 @@ class OrderDetailService extends CoreService
 			/** @var OrderDetail $orderDetail */
 			$orderDetail = $order->orderDetails()->create($this->setItemParams($item, $stock));
 
-			$stock->decrement('quantity', $actualQuantity);
+			// Stock artıq burada azaldılmır - yalnız OrderStatusUpdateService-də STATUS_ACCEPTED olduqda azaldılır
 
 			foreach ($addons as $addon) {
 
@@ -108,7 +108,7 @@ class OrderDetailService extends CoreService
 
 				$order->orderDetails()->create($this->setItemParams($addon, $addonStock));
 
-				$addonStock->decrement('quantity', $actualQuantity);
+				// Stock artıq burada azaldılmır - yalnız OrderStatusUpdateService-də STATUS_ACCEPTED olduqda azaldılır
 
 				Utility::calculateInventory($addonStock);
 
@@ -165,7 +165,7 @@ class OrderDetailService extends CoreService
 				/** @var OrderDetail $parent */
 				$parent = $order->orderDetails()->create($this->setItemParams($cartDetail, $stock));
 
-                $stock->decrement('quantity', $cartDetail->quantity);
+				// Stock artıq burada azaldılmır - yalnız OrderStatusUpdateService-də STATUS_ACCEPTED olduqda azaldılır
 
 				foreach ($cartDetail->children as $addon) {
 
@@ -176,7 +176,7 @@ class OrderDetailService extends CoreService
 					$addon->setAttribute('note', data_get($notes, $stock->id, ''));
 					$order->orderDetails()->create($this->setItemParams($addon, $stock));
 
-					$stock->decrement('quantity', $addon->quantity);
+					// Stock artıq burada azaldılmır - yalnız OrderStatusUpdateService-də STATUS_ACCEPTED olduqda azaldılır
 				}
 
             }
