@@ -605,8 +605,8 @@ class OrderRepository extends CoreRepository implements OrderRepoInterface
 				'transactions.children.paymentProcess',
 				'paymentProcesses',
 				'orderPayments',
-				'orderDetails.stock.countable:id,unit_id,img',
-				'orderDetails.children.stock.countable:id,unit_id',
+				'orderDetails.stock.countable:id,unit_id,img,oem_code',
+				'orderDetails.children.stock.countable:id,unit_id,oem_code',
 				'orderDetails' => fn($od) => $od->whereNull('parent_id'),
 				'orderDetails.kitchen.translation' => fn($q) => $q
 					->where('locale', $this->language)
